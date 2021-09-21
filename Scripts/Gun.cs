@@ -10,8 +10,9 @@ public class Gun : UdonSharpBehaviour
 {
     //projectiles will come in future, maybe...
     public bool RaycastDamage = true;
-    public Transform LocalBulletPool;
-
+    //public Transform LocalBulletPool;
+    public bool desktopFaceFiring;
+    public bool infiniteAmmo;
     public float maxDistance;
     public float RaycastDamageAmount;
     //public LayerMask hitboxLayer;
@@ -41,6 +42,8 @@ public class Gun : UdonSharpBehaviour
     private new AudioSource audio;
     private bool isreloadingaudio = true;
     private VRCPlayerApi localPlayer;
+    private bool DesktopUser;
+
 
     public Animator GunAnimator;
     public AnimationClip CycleAnimation;
@@ -100,20 +103,29 @@ public class Gun : UdonSharpBehaviour
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
-        audio = (AudioSource)gameObject.GetComponent(typeof(AudioSource));
+        
+            audio = (AudioSource)gameObject.GetComponent(typeof(AudioSource));
+        if(!localPlayer.IsUserInVR())
+        {
+            DesktopUser = true;
+        }
+        else
+        {
+            DesktopUser = false;
+        }
+        
         MaxAmmo = AmmoCount;
         Debug.Log("Ammo Left: " + AmmoCount);
 
-        AnimName = CycleAnimation.name;
+        if(CycleAnimation!= null)
+        {
+            AnimName = CycleAnimation.name;
+        }
+        
 
         if(BaseCycleOffAnimation)
         {
             CycleTime = CycleAnimation.length;
-        }
-        if (shotgun && !RaycastDamage)
-        {
-            shotgun = false;
-            //bad user, no projectile shotguns
         }
 
         if (scope != null)
@@ -131,18 +143,26 @@ public class Gun : UdonSharpBehaviour
 
     private void FixedUpdate()
     {
-        if (AmmoCount > 0)
+        if (AmmoCount > 0&&Display != null)
         {
             Display.text = (AmmoCount.ToString() + " / " + MaxAmmo.ToString());
         }
         else
         {
-            Display.text = "Reloading";
+            if(Display != null)
+            {
+                Display.text = "Reloading";
+            }
+            
         }
 
         if (AmmoCount <= 0 && AmmoCheck)
         {
-            audio.PlayOneShot(clips[1]);
+            if(clips[1] != null)
+            {
+                audio.PlayOneShot(clips[1]);
+            }
+            
             Reload();
             AmmoCheck = false;
         }
@@ -150,7 +170,11 @@ public class Gun : UdonSharpBehaviour
         if (!startTimer) return;
         if (currentTime > wantedTime - 0.7 && isreloadingaudio)
         {
-            audio.PlayOneShot(clips[2]);
+            if(clips[2] != null)
+            {
+                audio.PlayOneShot(clips[2]);
+            }
+            
             isreloadingaudio = false;
         }
         if (currentTime < wantedTime)
@@ -162,16 +186,31 @@ public class Gun : UdonSharpBehaviour
             startTimer = false;
             AmmoCount = MaxAmmo;
             AmmoCheck = true;
-            audio.PlayOneShot(clips[3]);
+            if (clips[3] != null)
+            {
+                audio.PlayOneShot(clips[3]);
+            }
+            
             isreloadingaudio = true;
             Debug.Log("Reloaded. Ammo now: " + AmmoCount);
-            Display.text = (AmmoCount.ToString() + " / " + MaxAmmo.ToString());
+            if(Display != null)
+            {
+                Display.text = (AmmoCount.ToString() + " / " + MaxAmmo.ToString());
+            }
         }
     }
 
     public void Fire()
     {
+        if (!(Time.time - firedTime > CycleTime)&&!Automatic)
+        {
+            return;
+        }
         
+        if(infiniteAmmo)
+        {
+            AmmoCount++;
+        }
         if (AmmoCount > 0)
         {
             if(RaycastDamage)
@@ -222,9 +261,17 @@ public class Gun : UdonSharpBehaviour
 
                         
                     }
-                    GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    if(GunAnimator != null)
+                    {
+                        GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    }
+                    
                     AmmoCount--;
-                    audio.PlayOneShot(clips[0]);
+                    if(clips[0] != null)
+                    {
+                        audio.PlayOneShot(clips[0]);
+                    }
+                    
                     if (UseShellParticle)
                     {
                         ShellParticle.Play();
@@ -264,10 +311,18 @@ public class Gun : UdonSharpBehaviour
                             }
                         }
                     }
-                   
-                    GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+
+                    if (GunAnimator != null)
+                    {
+                        GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    }
+
                     AmmoCount--;
-                    audio.PlayOneShot(clips[0]);
+                    if (clips[0] != null)
+                    {
+                        audio.PlayOneShot(clips[0]);
+                    }
+
                     if (UseShellParticle)
                     {
                         ShellParticle.Play();
@@ -283,36 +338,45 @@ public class Gun : UdonSharpBehaviour
                 //projectile stuff
                 if (shotgun == false)
                 {
-                    GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
-
+                    
                     //bullet shooting
                     //TODO replace instantiation with localised object pools
 
                     var bul = VRCInstantiate(bullet);
 
                     
-                    if(bul != gameObject)
+                    
+                    bul.transform.SetParent(null);
+                    bul.SetActive(true);
+                    if(desktopFaceFiring&&DesktopUser&&Networking.IsOwner(gameObject))
                     {
-                        bul.transform.SetParent(null);
-                        bul.SetActive(true);
+                        bul.transform.SetPositionAndRotation(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+                    }
+                    else
+                    {
                         bul.transform.SetPositionAndRotation(firePosition.position, firePosition.rotation);
-
-                        bul.transform.Rotate(Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread));
-
-                        var bulletrb = (Rigidbody)bul.GetComponent(typeof(Rigidbody));
-                        bulletrb.velocity = (bul.transform.forward) * fireVelocity;
-                        AmmoCount--;
-                        audio.PlayOneShot(clips[0]);
-
-                        if (UseShellParticle)
-                        {
-                            ShellParticle.Play();
-                        }
-                    }else
-                    {
-                        Debug.Log("bullet not available");
                     }
                     
+
+                    bul.transform.Rotate(Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread));
+
+                    var bulletrb = (Rigidbody)bul.GetComponent(typeof(Rigidbody));
+                    bulletrb.velocity = (bul.transform.forward) * fireVelocity;
+                    if (GunAnimator != null)
+                    {
+                        GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    }
+
+                    AmmoCount--;
+                    if (clips[0] != null)
+                    {
+                        audio.PlayOneShot(clips[0]);
+                    }
+
+                    if (UseShellParticle)
+                    {
+                        ShellParticle.Play();
+                    }
                     
                 }
                 else
@@ -330,9 +394,17 @@ public class Gun : UdonSharpBehaviour
                         var bulletrb = (Rigidbody)bul.GetComponent(typeof(Rigidbody));
                         bulletrb.velocity = (bul.transform.forward) * fireVelocity;
                     }
-                    GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    if (GunAnimator != null)
+                    {
+                        GunAnimator.Play("Base Layer." + AnimName, 0, 0.25f);
+                    }
+
                     AmmoCount--;
-                    audio.PlayOneShot(clips[0]);
+                    if (clips[0] != null)
+                    {
+                        audio.PlayOneShot(clips[0]);
+                    }
+
                     if (UseShellParticle)
                     {
                         ShellParticle.Play();

@@ -12,6 +12,7 @@ public class HealthManager : UdonSharpBehaviour
 {
     public UdonBehaviour BuffManager;
     public float CurrentHealth = 100.0f;
+    
     [HideInInspector]
     public float RespawnHealth;
     public GameObject Healthbar;
@@ -30,9 +31,12 @@ public class HealthManager : UdonSharpBehaviour
     private float currentTime;
     private float wantedTime;
 
+    private VRCPlayerApi localplayer;
     private void Start()
     {
         RespawnHealth = CurrentHealth;
+        localplayer = Networking.LocalPlayer;
+        localplayer.CombatSetMaxHitpoints(RespawnHealth);
     }
 
     public void ModifyHealth()
@@ -43,6 +47,9 @@ public class HealthManager : UdonSharpBehaviour
     private void Update()
     {
         Debug.Log("Health = " + CurrentHealth);
+
+        //testing
+        CurrentHealth = localplayer.CombatGetCurrentHitpoints();
 
         Healthbar.SetActive(CurrentHealth < RespawnHealth);
 

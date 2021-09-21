@@ -12,7 +12,8 @@ public class DamageDetector : UdonSharpBehaviour
 
     public void ModifyHealth()
     {
-        Debug.Log("ModifyHealth Triggered, Damage applied");
+        Debug.Log("ModifyHealth Triggered, Damage applied on" + manager.assignedPlayer.displayName);
         manager.attemptDamageApplication(DamageModifier * Modifier);
+        //manager.assignedPlayer.CombatSetCurrentHitpoints(manager.assignedPlayer.CombatGetCurrentHitpoints()+(DamageModifier * Modifier));
     }
 }

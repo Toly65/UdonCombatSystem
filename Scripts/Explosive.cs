@@ -14,6 +14,7 @@ public class Explosive : UdonSharpBehaviour
     public float playerLaunchModifier = 0.01f;
     public float Damage = 50.0f;
     public float MaxSpeedFromExplosionForPlayer = 80.0f;
+    public LayerMask pushableLayer;
     public GameObject ExplosiveViz;
     public AudioSource Audio;
     public AudioClip[] clips = new AudioClip[4];
@@ -87,7 +88,7 @@ public class Explosive : UdonSharpBehaviour
                     bool isVisible = false;
 
                     RaycastHit hit;
-                    if (Physics.Raycast(transform.position, (hitCol.transform.position - transform.position), out hit))
+                    if (Physics.Raycast(transform.position, (hitCol.transform.position - transform.position), out hit, ExplosiveRange,pushableLayer))
                     {
                         if (hit.collider.gameObject.name.Contains("hitbox") || hit.collider.gameObject.name.Contains("[Object]"))
                         {
@@ -157,9 +158,14 @@ public class Explosive : UdonSharpBehaviour
                     //this is done locally by every player in the explosion
                     if(isVisible && hitCol.gameObject.name.Contains("legs"))
                     {
-                       // localPlayer.SetVelocity(localPlayer.GetVelocity() + new Vector3(0, UpwardsModifier, 0));
-                        localPlayer.SetVelocity((localPlayer.GetPosition() - transform.position)/(localPlayer.GetPosition() - transform.position).magnitude * ExplosivePower * playerLaunchModifier + localPlayer.GetVelocity());
-                        if(localPlayer.GetVelocity().magnitude > MaxSpeedFromExplosionForPlayer)
+
+                        Debug.Log("explosion move player");
+                        // localPlayer.SetVelocity(localPlayer.GetVelocity() + new Vector3(0, UpwardsModifier, 0));
+                        //calculate modifier based on inverse distance from explosion centre
+                        float modifier = 1 / (localPlayer.GetPosition() - transform.position).magnitude;
+                        Debug.Log("explosion Modifier: " + modifier);
+                        localPlayer.SetVelocity(ExplosivePower * playerLaunchModifier * modifier* (localPlayer.GetPosition() - transform.position) + localPlayer.GetVelocity() );
+                        if (localPlayer.GetVelocity().magnitude > MaxSpeedFromExplosionForPlayer)
                         {
                             localPlayer.SetVelocity(localPlayer.GetVelocity().normalized * MaxSpeedFromExplosionForPlayer);
                         }

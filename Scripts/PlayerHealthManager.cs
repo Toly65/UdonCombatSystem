@@ -50,8 +50,14 @@ public class PlayerHealthManager : UdonSharpBehaviour
     private float maxHunger;
     private void Start()
     {
-        RespawnHealth = CurrentHealth;
+        
+        
         localPLayer = Networking.LocalPlayer;
+        RespawnHealth = CurrentHealth;
+        localPLayer.CombatSetMaxHitpoints(CurrentHealth);
+        localPLayer.CombatSetCurrentHitpoints(CurrentHealth);
+
+
         maxHunger = CurrentHunger;
         if(allowSatiation == false)
         {
@@ -68,7 +74,10 @@ public class PlayerHealthManager : UdonSharpBehaviour
 
     private void Update()
     {
-       // Debug.Log("Player Health = " + CurrentHealth);
+
+        //Debug.Log("Player Health = " + CurrentHealth);
+
+        //Debug.Log("playerAPI health = "+ localPLayer.CombatGetCurrentHitpoints());
         //hunger stuff
         if (hunger == true)
         {

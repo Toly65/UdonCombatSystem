@@ -9,6 +9,7 @@ public class Bullet : UdonSharpBehaviour
 {
     //public configuarble variables
     public bool sendTriggerMessage = false;
+    public bool destroyOnPlayerContact;
     private ContactPoint contact;
     public GameObject BulletSpark;
     //public Explosive explodeScript;
@@ -79,7 +80,7 @@ public class Bullet : UdonSharpBehaviour
             totalDamage = MinDamage;
         }
 
-        
+
     }
 
     void FixedUpdate()
@@ -117,13 +118,13 @@ public class Bullet : UdonSharpBehaviour
         BulletStuff(otherObject);
         contact = other.GetContact(0);
         Debug.Log("collisionEntered");
-        
+
         var hit = VRCInstantiate(BulletSpark);
         hit.transform.position = transform.position;
         hit.transform.position = contact.point;
         hit.SetActive(true);
-        
-        
+
+
         Destroy(gameObject);
     }
 
@@ -132,7 +133,7 @@ public class Bullet : UdonSharpBehaviour
         Debug.Log("triggerEntered");
         var otherObject = other.gameObject;
         BulletStuff(otherObject);
-    } 
+    }
     private void BulletStuff(GameObject otherObject)
     {
         //var point = other.ClosestPoint();
@@ -141,7 +142,7 @@ public class Bullet : UdonSharpBehaviour
         //hit.transform.position = contact.point;
 
 
-        
+
         if ((UdonBehaviour)otherObject.GetComponent(typeof(UdonBehaviour)) == null)
         {
             //TrueParent.gameObject.SetActive(false);
@@ -150,14 +151,14 @@ public class Bullet : UdonSharpBehaviour
         }
         else
         {
-            if(Networking.GetOwner(gameObject)==Networking.GetOwner(SpawningGun))
+            if (Networking.GetOwner(gameObject) == Networking.GetOwner(SpawningGun))
             {
                 Target = (UdonBehaviour)otherObject.GetComponent(typeof(UdonBehaviour));
                 Debug.Log("udon collision with " + Target.name);
                 Target.SetProgramVariable("Modifier", (totalDamage * -1));
                 Target.SendCustomEvent("ModifyHealth");
             }
-            
+
 
             /*
             BuffManagerTarget.SetProgramVariable("isBleeding", true);
@@ -171,11 +172,14 @@ public class Bullet : UdonSharpBehaviour
 
             Debug.Log("Bullet did: " + totalDamage);*/
 
-            
+
+        }
+        if (destroyOnPlayerContact)
+        {
+            Destroy(gameObject);
         }
 
-        Destroy(gameObject);
-        
+
     }
 
 }
