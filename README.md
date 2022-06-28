@@ -13,3 +13,4 @@ hitboxes are managed locally and are pooled in the combat system prefab, any cha
 
 Projectile weapons should contain any scripted things they are firing out within themselves in a disabled form in order to clone them for use in game, this allows them to be preconfigured. An example of something you would want to clone would be a physical bullet
 
+For further support and possible updates join this discord: https://discord.gg/cvF8JEhrq7
