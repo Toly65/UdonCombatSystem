@@ -20,8 +20,6 @@ public class Bullet : UdonSharpBehaviour
     public float lifetime = 15.0f;
     public int BleedTimeToAdd = 1;
     public float BleedDamageToAdd = 5f;
-    public bool Rocket;
-    public float rocketPropulsion;
     public float PropulsionTime;
     public float RotationSpeed;
     public GameObject SpawningGun;
@@ -122,6 +120,8 @@ public class Bullet : UdonSharpBehaviour
         var hit = VRCInstantiate(BulletSpark);
         hit.transform.position = transform.position;
         hit.transform.position = contact.point;
+        UdonBehaviour behaviour = (UdonBehaviour)hit.GetComponent(typeof(UdonBehaviour));
+        behaviour.SetProgramVariable("TrueOwner", SpawningGun);
         hit.SetActive(true);
 
 

@@ -39,7 +39,7 @@ public class BuffManager : UdonSharpBehaviour
     
     private void Update()
     {
-        Debug.Log(currentTime_Bleed);
+        
         if (isBleeding)
         {
             if (bleedIsFirstActive)

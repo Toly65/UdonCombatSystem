@@ -3,10 +3,11 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class Lookat : UdonSharpBehaviour
 {
     public Transform m_Target;
+    public bool lookat = true;
     [SerializeField] private Vector2 m_RotationRange;
     [SerializeField] private float m_FollowSpeed = 1;
 
@@ -23,7 +24,14 @@ public class Lookat : UdonSharpBehaviour
         m_OriginalRotation = transform.localRotation;
     }
 
-
+    public void LookAtTarget()
+    {
+        lookat = true;
+    }
+    public void DontLookAtTarget()
+    {
+        lookat = false;
+    }
     void FollowTarget()
     {
         // we make initial calculations from the original local rotation
@@ -53,6 +61,9 @@ public class Lookat : UdonSharpBehaviour
 
     private void Update()
     {
-        FollowTarget();
+        if(lookat)
+        {
+            FollowTarget();
+        }  
     }
 }

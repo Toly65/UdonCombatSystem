@@ -3,6 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using UnityEngine.Animations;
 
 public class ScopeManager : UdonSharpBehaviour
 {
@@ -18,8 +19,18 @@ public class ScopeManager : UdonSharpBehaviour
     }
     public void ManageScope()
     {
+        
         ScopeCamera.fieldOfView = CameraFOV;
+        //CameraObject.transform.SetPositionAndRotation(ScopeCameraPosition.position, ScopeCameraPosition.rotation);
+        //CameraObject.transform.SetParent(ScopeCameraPosition);
+        ConstraintSource constraintSource = new ConstraintSource();
+        constraintSource.sourceTransform = ScopeCameraPosition;
+        constraintSource.weight = 1;
+        ParentConstraint constraint = CameraObject.GetComponent<ParentConstraint>();
+        // constraint.AddSource
+        constraint.SetSource(0, constraintSource);
         CameraObject.transform.SetPositionAndRotation(ScopeCameraPosition.position, ScopeCameraPosition.rotation);
-        CameraObject.transform.SetParent(ScopeCameraPosition);
+        constraint.locked = true;
+        constraint.constraintActive = true;
     }
 }

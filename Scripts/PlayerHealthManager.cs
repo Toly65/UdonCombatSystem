@@ -1,184 +1,137 @@
-using System;
+
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-//USE ONLY FOR PLAYERS! OBJECTS AND NPCS USE A DIFFERENT SCRIPT
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 
 [AddComponentMenu("")]
 public class PlayerHealthManager : UdonSharpBehaviour
 {
-    public UdonBehaviour BuffManager;
-    public float CurrentHealth = 100.0f;
-    public float CurrentHunger = 100.0f;
-    public float RespawnHealth;
-    public float Modifier = 0f;
+    
 
+    [HideInInspector]public float CurrentHealth = 100.0f;
+    public float RespawnHealth = 100.0f;
+
+    [Header("HealthMangerAddons")]
+
+
+
+    public UdonBehaviour OnDamageBehaviour;
+    public string DamageFunction;
+    public string DamageInputVariable;
+
+    public UdonBehaviour OnDeathBehaviour;
+    public string DeathFunction;
     private VRCPlayerApi localPLayer;
     // private String PlayerTag = "[Player]";
 
     public bool RespawnTimer = true;
     [Header("respawn Related Stuff")]
-    public Transform RespawnPoint;
+    public Transform[] RespawnPoint;
     public Transform DeathPoint;
     public float RespawnTime = 5f;
+    public killTracker Killtracker;
+    public ImprovedHitBoxAssigner hitBoxAssigner;
 
-    private bool isTimerComplete = false;
-    private bool StartTimer = false;
-    private float currentTime;
-    private float wantedTime;
+    private float deathTimerStart;
 
-    [Header("team and damage releated stuff")]
-    [HideInInspector] public bool blue;
-    [HideInInspector] public bool red;
-    public bool unassignTeamOnDeath;
+    [SerializeField] private bool optState = true;
+    [SerializeField] private GameObject[] optToggledObjects;
+    private bool[] optToggleObjectsStates;
+    [HideInInspector] public bool Dead;
 
-
-    //time management for the hunger
-    [Header("hunger related variable")]
-    private float lastDepletion;
-    public bool hunger = true;
-    public float hungerInterval;
-    public float hungerConsumption;
-    public bool allowSatiation;
-    private bool satiated;
-    public float satiationTime;
-    public AudioSource hungerNoise;
-    [HideInInspector] public float addedHunger;
-    [HideInInspector] public bool Dead = false;
-    private float maxHunger;
+    
     private void Start()
     {
-        
-        
         localPLayer = Networking.LocalPlayer;
-        RespawnHealth = CurrentHealth;
-        localPLayer.CombatSetMaxHitpoints(CurrentHealth);
-        localPLayer.CombatSetCurrentHitpoints(CurrentHealth);
+        CurrentHealth = RespawnHealth;
 
-
-        maxHunger = CurrentHunger;
-        if(allowSatiation == false)
-        {
-            satiated = false;
-        }
+        //localPLayer.CombatSetMaxHitpoints(CurrentHealth);
+        //localPLayer.CombatSetCurrentHitpoints(CurrentHealth);
     }
 
-    public void ModifyHealth()
+    public void SetOptState(bool state)
     {
-        CurrentHealth += Modifier;
-    }
-
-
-
-    private void Update()
-    {
-
-        //Debug.Log("Player Health = " + CurrentHealth);
-
-        //Debug.Log("playerAPI health = "+ localPLayer.CombatGetCurrentHitpoints());
-        //hunger stuff
-        if (hunger == true)
+        optState = state;
+        if(state)
         {
-           // Debug.Log("hunger true");
-            if (Time.time - lastDepletion > hungerInterval)
-            {
-                //Debug.Log("depleting Food");
-                CurrentHunger -= hungerConsumption;
-                if(CurrentHunger <= 0.25*maxHunger&&hungerNoise != null)
-                {
-                    hungerNoise.Play();
-                }
-                if(CurrentHunger < 0)
-                {
-                    CurrentHunger = 0;
-                    CurrentHealth -= 30;
-                }
-                lastDepletion = Time.time;
-            }
 
-        }
-        //health stuff
-        if (CurrentHealth <= 0f)
-        {
-            
-            
-            Die();
-        }
-
-        if (!StartTimer) return;
-        if (currentTime < wantedTime)
-        {
-            currentTime += Time.deltaTime;
         }
         else
         {
-            isTimerComplete = true;
-            StartTimer = false;
-        }
-        
 
+        }
+    }
+    public bool GetOptState()
+    {
+        return optState;
     }
 
-
-
-    public void Die()
+    public void ModifyHealth(float Damage)
     {
-        Dead = true;
-
-        
-        if(unassignTeamOnDeath)
+        Debug.Log("modify health Recieved by health Manager");
+        if(optState)
         {
-            red = false;
-            blue = false;
-        }
-        if (RespawnTimer)
-        {
-            Timer();
-            if (!isTimerComplete)
+            if (OnDamageBehaviour)
             {
-                Dead = true;
-                if (DeathPoint != null)
-                {
-                    localPLayer.TeleportTo(DeathPoint.position, DeathPoint.rotation);
-                }
-
-                Debug.Log("You have died.");
+                //MAKE BEHAVIOUR STUFF HAPPEN
+                OnDamageBehaviour.SendCustomEvent(DamageFunction);
             }
             else
             {
-                isTimerComplete = false;
-                RespawnObject();
-                BuffManager.SendCustomEvent("ResetBleeding");
-                BuffManager.SendCustomEvent("ResetPoison");
+                CurrentHealth += Damage;
+            }
+        }else
+        {
+            Debug.Log("local player is not opted into combat!");
+        }
+    }
+
+
+
+    private void FixedUpdate()
+    {
+        //health stuff
+        if (CurrentHealth <= 0f && !Dead)
+        {
+            Die();
+        }
+        if(Dead)
+        {
+            CurrentHealth = RespawnHealth;
+            if (Time.time - deathTimerStart > RespawnTime)
+            {
+                Dead = false;
             }
         }
-        else
+
+    }
+    public void Die()
+    {
+        //REDO DEATH
+        Dead = true;
+        deathTimerStart = Time.time;
+        RespawnObject();
+        if (OnDeathBehaviour)
         {
-            RespawnObject();
-            BuffManager.SendCustomEvent("ResetBleeding");
-            BuffManager.SendCustomEvent("ResetPoison");
+            OnDeathBehaviour.SendCustomEvent(DeathFunction);
+        }
+        if(Killtracker)
+        {
+            Killtracker.addkill(hitBoxAssigner.hitboxArray[localPLayer.playerId].LastPlayerWhoDamagedID);
         }
     }
 
     public void RespawnObject()
     {
         Debug.Log("respawn Triggerd");
-        localPLayer.TeleportTo(RespawnPoint.position, RespawnPoint.rotation);
-        CurrentHunger = 100.0f;
+        int respawnIndex = Random.Range(0, RespawnPoint.Length-1);
+        localPLayer.TeleportTo(RespawnPoint[respawnIndex].position, RespawnPoint[respawnIndex].rotation);
+        
         CurrentHealth = RespawnHealth;
-        Dead = false;
-    }
-
-    public void Timer()
-    {
-        if(!StartTimer)
-        {
-            currentTime = Time.time;
-            wantedTime = currentTime + RespawnTime;
-            StartTimer = true;
-        }
+        //localPLayer.CombatSetCurrentHitpoints(RespawnHealth);
         
     }
 }

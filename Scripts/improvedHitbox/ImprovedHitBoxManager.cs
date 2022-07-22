@@ -11,25 +11,25 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
     [HideInInspector] public VRCPlayerApi assignedPlayer;
 
     [UdonSynced] public float damageApplied;
-
+    
 
     // udon doesn't support syncing a VRCPlayerApi so to know who the player taking damage is we'll set them to own an empty gameobject
-    public GameObject playerSync;
+    
     public PlayerHealthManager healthManager;
     VRCPlayerApi localplayer;
     public improvedHitbox[] managedHitboxes;
     public Transform HeadTransform;
-    [UdonSynced]public int AltPlayerSync;
+    [HideInInspector]public int playerID;
+    [UdonSynced]public int LastPlayerWhoDamagedID;
     private bool damageBeingInflicted;
-
-    //this is conflicting code you can delete savely but I can't
-    //public bool useBoxingSystem;
-    //public boxingHealth boxHealth;
+    public Transform TeamIndicatorParent;
+    [HideInInspector]public int teamID;
 
     public void SetAssignedPlayer(VRCPlayerApi player)
     {
 
         assignedPlayer = player;
+        playerID = player.playerId;
         for (int i = 0; i < managedHitboxes.Length; i++)
         {
             managedHitboxes[i].assignedPlayer = player;
@@ -40,19 +40,22 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
     private void Start()
     {
         localplayer = Networking.LocalPlayer;
+        damageApplied = 0;
     }
 
     public void attemptDamageApplication(float damage)
     {
         Debug.Log("Damage Applicaiton Attempted");
         damageApplied = damage;
-        //one method of syncing players
-        // Networking.SetOwner(assignedPlayer, playerSync);
-        //another method of syncing players
-        AltPlayerSync = assignedPlayer.playerId;
-        Debug.Log("player attempted to be damaged ID " + AltPlayerSync);
+        LastPlayerWhoDamagedID = localplayer.playerId + 1;
         Networking.SetOwner(localplayer,gameObject);
+        RequestSerialization();
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkedDamage");
+        
+    }
+    public void OnPlayerLeft(VRCPlayerApi player)
+    {
+        damageApplied = 0;
         RequestSerialization();
     }
     public void NetworkedDamage()
@@ -63,51 +66,21 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
 
     public void OnDeserialization()
     {
-        Debug.Log("hitbox Deserialising");
-        if(damageBeingInflicted)
+        VRCPlayerApi targetedPlayer = VRCPlayerApi.GetPlayerById(playerID);
+        if (targetedPlayer != null)
         {
-            Debug.Log("Current Player ID being damaged " + AltPlayerSync);
-            Debug.Log("playerName: " + VRCPlayerApi.GetPlayerById(AltPlayerSync));
-            VRCPlayerApi targetedPlayer = VRCPlayerApi.GetPlayerById(AltPlayerSync);
-            if (!targetedPlayer.IsValid())
+            if(!targetedPlayer.IsValid())
             {
                 Debug.Log("invalid playerID transmitted");
                 return;
-            }
-
-            if (localplayer == targetedPlayer)
-            {
-                Debug.Log("networkedDamageApplied to" + localplayer.displayName);
-
-                //this is conflicting code you can delete safely but I can't
-                /*
-                if(useBoxingSystem)
-                {
-
-                    if(boxHealth.guarding)
-                    {
-                        boxHealth.guard += damageApplied;
-                    }
-                    else
-                    {
-                        boxHealth.health += damageApplied;
-                    }
-
-
-                    boxHealth.currentStaminaSpooledRegenTime = Time.time;
-                    boxHealth.currentStaminaSpooledRegenTime = 0.0f;
-                }
-                else
-                {
-                    healthManager.CurrentHealth += damageApplied;
-                }*/
-
-                healthManager.CurrentHealth += damageApplied;
-            }
+            } 
         }
-        damageBeingInflicted = false;
-    }
-    
 
+        if (localplayer == targetedPlayer)
+        {
+            Debug.Log("networkedDamageApplied to" + localplayer.displayName);
+            healthManager.ModifyHealth(damageApplied);
+        }
+    }
 }
 

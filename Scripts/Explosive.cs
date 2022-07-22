@@ -17,13 +17,14 @@ public class Explosive : UdonSharpBehaviour
     public LayerMask pushableLayer;
     public GameObject ExplosiveViz;
     public AudioSource Audio;
+    [Header("higher is nearer")]
     public AudioClip[] clips = new AudioClip[4];
     private AudioClip ExplosionAudio;
   
     private float distanceFromPlayer;
 
     public GameObject GunRoot;
-
+    public bool ownerGetsPropelledOnly;
     private VRCPlayerApi localPlayer;
     private VRCPlayerApi TrueOwner;
     private void Start()
@@ -50,29 +51,47 @@ public class Explosive : UdonSharpBehaviour
         
         if (distanceFromPlayer <= 50)
         {
-            ExplosionAudio = clips[1];
+            if(clips[1])
+            {
+                ExplosionAudio = clips[1];
+            }
+            
         }
         else if (distanceFromPlayer <= 250)
         {
-            ExplosionAudio = clips[2];
+            if(clips[2])
+            {
+                ExplosionAudio = clips[2];
+            }
+            
         }
         else
         {
-            ExplosionAudio = clips[3];
+            if (clips[3])
+            {
+                ExplosionAudio = clips[3];
+            }
         }
 
         if (ExplosiveRange <= 2)
         {
-            ExplosionAudio = clips[0];
+            if(clips[0])
+            {
+                ExplosionAudio = clips[0];
+            }
+            
         }
         localPlayer = Networking.LocalPlayer;
         
         Audio.PlayOneShot(ExplosionAudio);
-
-        var Explosion = VRCInstantiate(ExplosiveViz);
-        Explosion.SetActive(true);
-        Explosion.transform.position = transform.position;
-        Explosion.transform.localScale = new Vector3(ExplosiveRange, ExplosiveRange, ExplosiveRange);
+        if (ExplosiveViz != null)
+        {
+            var Explosion = VRCInstantiate(ExplosiveViz);
+            Explosion.SetActive(true);
+            Explosion.transform.position = transform.position;
+            Explosion.transform.localScale = new Vector3(ExplosiveRange, ExplosiveRange, ExplosiveRange);
+        }
+        
 
 
         var colliders = Physics.OverlapSphere(transform.position, ExplosiveRange);
@@ -106,7 +125,7 @@ public class Explosive : UdonSharpBehaviour
                             //set ownership of everything that gets moved
                             Networking.SetOwner(TrueOwner, hitCol.gameObject);
                             var rb = (Rigidbody)hitCol.GetComponent(typeof(Rigidbody));
-                            rb.AddExplosionForce(ExplosivePower, Explosion.transform.position, ExplosiveRange, UpwardsModifier);
+                            rb.AddExplosionForce(ExplosivePower, transform.position, ExplosiveRange, UpwardsModifier);
 
                             //keeping this in incase you want random objects to take damage
                             if ((UdonBehaviour)hitCol.GetComponent(typeof(UdonBehaviour)) != null)
@@ -155,20 +174,42 @@ public class Explosive : UdonSharpBehaviour
                     }
                     //legs handle blast this means that teoretically a player can rocket jump without taking damage
 
+                    //this will cut the code short here if the propulsion is only for the owner of the explosion
+                    if(ownerGetsPropelledOnly)
+                    {
+                        if(!(localPlayer == TrueOwner))
+                        {
+                            Debug.Log("not true owner for explosion");
+                            return;
+                        }
+                    }
                     //this is done locally by every player in the explosion
                     if(isVisible && hitCol.gameObject.name.Contains("legs"))
                     {
-
-                        Debug.Log("explosion move player");
-                        // localPlayer.SetVelocity(localPlayer.GetVelocity() + new Vector3(0, UpwardsModifier, 0));
-                        //calculate modifier based on inverse distance from explosion centre
-                        float modifier = 1 / (localPlayer.GetPosition() - transform.position).magnitude;
-                        Debug.Log("explosion Modifier: " + modifier);
-                        localPlayer.SetVelocity(ExplosivePower * playerLaunchModifier * modifier* (localPlayer.GetPosition() - transform.position) + localPlayer.GetVelocity() );
-                        if (localPlayer.GetVelocity().magnitude > MaxSpeedFromExplosionForPlayer)
+                        Debug.Log("legs detected");
+                        //since this is entirely player related we can reference scripts directly
+                        DamageDetector legHitbox = hitCol.gameObject.GetComponent<DamageDetector>();
+                        if(legHitbox)
                         {
-                            localPlayer.SetVelocity(localPlayer.GetVelocity().normalized * MaxSpeedFromExplosionForPlayer);
+                            VRCPlayerApi hitboxowner = legHitbox.manager.assignedPlayer;
+                            if (hitboxowner == localPlayer)
+                            {
+                                
+
+                                float modifier = 1 / (localPlayer.GetPosition() - transform.position).magnitude;
+                                localPlayer.SetVelocity(ExplosivePower * playerLaunchModifier * modifier * (localPlayer.GetPosition() - transform.position) + localPlayer.GetVelocity());
+                                if (localPlayer.GetVelocity().magnitude > MaxSpeedFromExplosionForPlayer)
+                                {
+                                    localPlayer.SetVelocity(localPlayer.GetVelocity().normalized * MaxSpeedFromExplosionForPlayer);
+                                }
+
+                            }
                         }
+                        else
+                        {
+                            Debug.Log("leg hitbox null");
+                        }
+                       
                     }
                 }
             }

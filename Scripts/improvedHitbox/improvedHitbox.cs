@@ -3,7 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class improvedHitbox : UdonSharpBehaviour
 {
     public bool leg;
@@ -12,13 +12,13 @@ public class improvedHitbox : UdonSharpBehaviour
     private Transform col;
     [HideInInspector] public VRCPlayerApi assignedPlayer;
     public Transform thingy;
-
+   
     private void Start()
     {
         col = transform;
     }
     //positional tracking based on what it is
-    private void Update()
+    private void PostLateUpdate()
     {
         if(assignedPlayer.IsValid())
         {

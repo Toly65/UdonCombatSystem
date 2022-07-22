@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f11136daadff0b44ac2278a314682ab, type: 3}
   m_Name: SimpleObjectSpawnGraph
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 9224e89d48d3b764b8a3c4f7676524fa,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 33d767f8a353ee84096c463d07395493,
     type: 2}
   udonAssembly: ".data_start\r\n\r\n    \r\n    objectPool: %VRCSDK3ComponentsVRCObjectPool,
     null\r\n    spawnLocation: %UnityEngineTransform, this\r\n\r\n.data_end\r\n\r\n.code_start\r\n\r\n\r\n.code_end\r\n"
