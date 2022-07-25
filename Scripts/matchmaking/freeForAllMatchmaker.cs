@@ -36,6 +36,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     [Header("optional addons")]
     public GameObject matchUI;
     public KillCounter killCounter;
+    public loadoutmanager LoadoutManager;
 
     [Header("set these to be the player limit, don't change the contents")]
     [SerializeField][UdonSynced] private int[] optedplayerIDs = new int[12];
@@ -157,6 +158,11 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         {
             inMatch = true;
             healthManager.SetOptState(true);
+            //check if the loadoutmanager exists and apply the selected loadout
+            if (LoadoutManager != null)
+            {
+                LoadoutManager.ApplySelectedLoadout();
+            }
             //run locally
             ID = findID();
             int TeleportIndex = Random.Range(0, spawnLocations.Length - 1);

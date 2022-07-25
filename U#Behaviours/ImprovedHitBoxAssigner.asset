@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: ImprovedHitBoxAssigner
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: d47f178a1c25e2a4cbb19f4b3ac3e2cc,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 459dd583f5625db419ec064bccb411c7,
     type: 2}
   udonAssembly: 
   assemblyError: 

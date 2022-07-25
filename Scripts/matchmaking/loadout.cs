@@ -6,14 +6,14 @@ using VRC.Udon;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class loadout : UdonSharpBehaviour
 {
-    [SerializeField] private StowPoint[] TargetStowPoints;
-    [SerializeField] private ItemManager[] Items;
+    public StowPoint[] TargetStowPoints;
+    public ItemManager[] items;
 
     public void ApplyLoadout()
     {
-        for (int i = 0; i < TargetStowPoints.Length; i++)
+        for (int i = 0; i < items.Length; i++)
         {
-            VRC_Pickup targetPickup = Items[i].objectPool.TryToSpawn().GetComponent<VRC_Pickup>();
+            VRC_Pickup targetPickup = items[i].objectPool.TryToSpawn().GetComponent<VRC_Pickup>();
             TargetStowPoints[i].ForceItemLock(targetPickup);
         }
     }
