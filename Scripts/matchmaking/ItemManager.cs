@@ -5,7 +5,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 using VRC.SDK3.Components;
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-[RequireComponent(typeof(VRCObjectPool))]
+[RequireComponent(typeof(BetterObjectPool))]
 public class ItemManager : UdonSharpBehaviour
 {
     public Sprite thumbnail;
@@ -13,7 +13,7 @@ public class ItemManager : UdonSharpBehaviour
     public string itemClass;
     [TextArea(15, 20)]
     public string description;
-    [HideInInspector] public VRCObjectPool objectPool;
+    public BetterObjectPool objectPool;
     [Header("these may be configured automatically if you use the combat system's guns")]
     public float damage;
     public float fireRate;
@@ -21,7 +21,7 @@ public class ItemManager : UdonSharpBehaviour
 
     private void Start()
     {
-        objectPool = (VRCObjectPool)gameObject.GetComponent(typeof(VRCObjectPool));
+        objectPool = gameObject.GetComponent<BetterObjectPool>();
         //check the first child of the first child of the object pool for a gun script
         if (objectPool.transform.GetChild(0).GetChild(0).GetComponent<Gun>())
         {

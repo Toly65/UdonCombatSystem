@@ -6,9 +6,9 @@ using VRC.Udon;
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class killTracker : UdonSharpBehaviour
 {
-    [UdonSynced]private int[] kills = new int[80];
+    [UdonSynced] private int[] kills = new int[80];
     [UdonSynced] private int[] deaths = new int[80];
-    [UdonSynced] private int[] playerIDs = new int[80];
+    [UdonSynced] public int[] playerIDs = new int[80];
     public ImprovedHitBoxAssigner hitboxPool;
     public killScoreboardDisplay killDisplay;
 
@@ -31,11 +31,12 @@ public class killTracker : UdonSharpBehaviour
         {
             UpdateKillDisplay();
         }
+       
     }
     public int getKillCount(int playerID)
     {
         int killerID = GetKillerID(playerID);
-        if (killerID != 0)
+        if (!(killerID < 0))
         {
             return kills[GetKillerID(playerID)];
         }
@@ -44,9 +45,14 @@ public class killTracker : UdonSharpBehaviour
     public int getDeathCount(int playerID)
     {
         int killerID = GetKillerID(playerID);
-        if(killerID != 0)
+        if(!(killerID < 0))
         {
-            return deaths[killerID];
+            if(deaths[killerID] != null)
+            {
+
+                return deaths[killerID];
+            }
+            return 0;
         }
         return 0;
     }
@@ -61,11 +67,15 @@ public class killTracker : UdonSharpBehaviour
         }
         deaths[localplayerKillerID] += 1;
 
-        if(kills[killingPlayerID] == null)
+        if(!(killingPlayerID < 0))
         {
-            kills[killingPlayerID] = 0;
+            if (kills[killingPlayerID] == null)
+            {
+                kills[killingPlayerID] = 0;
+            }
+            kills[killingPlayerID] += 1;
         }
-        kills[killingPlayerID] += 1;
+       
 
         Networking.SetOwner(localplayer, gameObject);
         RequestSerialization();
@@ -76,21 +86,30 @@ public class killTracker : UdonSharpBehaviour
     }
     public int GetKillerID(int playerID)
     {
+        Debug.Log("ID given to check " + playerID);
         for (int i = 0; i < playerIDs.Length; i++)
         {
-            if (playerIDs[i]== playerID)
+            if (playerIDs[i]== playerID+1)
             {
                 return i;
             }
         }
+        //log the contents of playerIDs
+        Debug.Log("playerIDs: " + playerIDs);
         return -1;
     }
     public void OnPlayerLeft(VRCPlayerApi player)
     {
-        if(localplayer == Networking.GetOwner(gameObject))
+        //find the players killerID and clear that index
+        int killerID = GetKillerID(player.playerId);
+        if (killerID > 0)
         {
-            //kills[player.playerId] = 0;
-           
+            kills[killerID] = 0;
+            deaths[killerID] = 0;
+            playerIDs[killerID] = 0;
+        }
+        if (localplayer == Networking.GetOwner(gameObject))
+        {
             RequestSerialization();
             if (killDisplay)
             {
@@ -101,24 +120,28 @@ public class killTracker : UdonSharpBehaviour
     }
     public void OnPlayerJoined(VRCPlayerApi player)
     {
+        
+        //check for empty space in array and assign it to the player
+        for (int i = 0; i < playerIDs.Length; i++)
+        {
+            if (playerIDs[i] == 0)
+            {
+                //space is empty, fill it
+                playerIDs[i] = player.playerId + 1;
+                Debug.Log("playerIDs " + i + "filled with" + (player.playerId + 1));
+                kills[i] = 0;
+                deaths[i] = 0;
+                //send changes to network
+                break;
+            }
+        }
+        if (localplayer == Networking.GetOwner(gameObject))
+        {
+            RequestSerialization();
+        }
         if (killDisplay)
         {
             UpdateKillDisplay();
-        }
-        if(localplayer == Networking.GetOwner(gameObject))
-        {
-            //check for empty space in array and assign it to the player
-            for (int i = 0; i < playerIDs.Length; i++)
-            {
-                if (playerIDs[i] == 0)
-                {
-                    //space is empty, fill it
-                    playerIDs[i] = player.playerId + 1;
-                    kills[i] = 0;
-                    deaths[i] = 0;
-                    break;
-                }
-            }
         }
     }
 
@@ -129,14 +152,17 @@ public class killTracker : UdonSharpBehaviour
         string[] playernamesToSubmit = new string[playerCount];
         int[] playerkillsToSubmit = new int[playerCount];
         int[] playerDeathsToSubmit = new int[playerCount];
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
+        VRCPlayerApi[] players = new VRCPlayerApi[playerCount+1];
         VRCPlayerApi.GetPlayers(players);
         for (int i = 0; i < playerCount; i++)
         {
             int playerID = players[i].playerId;
             int PlayerKillID = GetKillerID(playerID);
+            Debug.Log("processingPlayerForDisplay");
             if(PlayerKillID != -1)
             {
+                Debug.Log("player killerID " + PlayerKillID);
+                Debug.Log("player name " + players[i].displayName);
                 playernamesToSubmit[i] = players[i].displayName;
                 playerkillsToSubmit[i] = kills[PlayerKillID];
                 playerDeathsToSubmit[i] = deaths[PlayerKillID];
@@ -163,12 +189,17 @@ public class killTracker : UdonSharpBehaviour
         if(onKillBehaviour)
         {
             //check if localplayer got a kill
-            int currentKills = kills[localplayer.playerId];
-            if(currentKills > localplayerKills)
+            int killerID = GetKillerID(localplayer.playerId);
+            if(killerID > -1)
             {
-                onKillBehaviour.SendCustomEvent(killMethod);
-                localplayerKills = currentKills;
+                int currentKills = kills[GetKillerID(localplayer.playerId)];
+                if (currentKills > localplayerKills)
+                {
+                    onKillBehaviour.SendCustomEvent(killMethod);
+                    localplayerKills = currentKills;
+                }
             }
+            
         }
     }
 

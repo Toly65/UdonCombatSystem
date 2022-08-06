@@ -25,7 +25,7 @@ public class loadoutItemDisplay : UdonSharpBehaviour
         }
         else
         {
-            damageStatsDisplay.gameObject.SetActive(true);
+            //damageStatsDisplay.gameObject.SetActive(true);
             damageStatsDisplay.UpdateDamageText(item.damage, item.fireRate);
         }
         

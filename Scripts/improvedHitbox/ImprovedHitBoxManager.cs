@@ -3,11 +3,11 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class ImprovedHitBoxManager : UdonSharpBehaviour
 {
 
-    [Header("FOR THE LOVE OF GOD MAKE ME MANUAL SYNC")]
+    
     [HideInInspector] public VRCPlayerApi assignedPlayer;
 
     [UdonSynced] public float damageApplied;
@@ -47,7 +47,7 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
     {
         Debug.Log("Damage Applicaiton Attempted");
         damageApplied = damage;
-        LastPlayerWhoDamagedID = localplayer.playerId + 1;
+        LastPlayerWhoDamagedID = localplayer.playerId;
         Networking.SetOwner(localplayer,gameObject);
         RequestSerialization();
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkedDamage");

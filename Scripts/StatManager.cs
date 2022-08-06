@@ -4,7 +4,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 using UnityEngine.UI;
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class StatManager : UdonSharpBehaviour
 {
     public PlayerHealthManager playerHealthManager;

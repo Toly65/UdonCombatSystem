@@ -10,7 +10,7 @@ public class loadout : UdonSharpBehaviour
     public ItemManager[] items;
     private int[][] UniqueItemsStowPointIDs;
     private ItemManager[] uniqueItems;
-    private GameObject[] OrderedItems;
+    private VRC_Pickup[] OrderedItems;
     private void Start()
     {
         //remove duplicates from items and output the result into uniqueItems
@@ -40,12 +40,14 @@ public class loadout : UdonSharpBehaviour
             tempUniqueItems[i] = uniqueItems[i];
         }
         uniqueItems = tempUniqueItems;
+        //create UniqueItemsStowPointIDs
+        UniqueItemsStowPointIDs = new int[uniqueItems.Length][];
         //create a 2D array of ints to store the stowpoint IDs of the unique items
         for (int i = 0; i < uniqueItems.Length; i++)
         {
             for (int j = 0; j < items.Length; j++)
             {
-                if (items[j] == uniqueItems[i])
+                if (items[j].name == uniqueItems[i].name)
                 {
                     //check if array exists within the array
                     if (UniqueItemsStowPointIDs[i] == null)
@@ -67,18 +69,59 @@ public class loadout : UdonSharpBehaviour
             }
         }
     }
-
+    public void CancelAllPreOrders()
+    {
+        for (int i = 0; i < uniqueItems.Length; i++)
+        {
+            uniqueItems[i].objectPool.PlayerCancelPreOrders();
+        }
+    }
     public void PreOrderItems()
     {
-        //order items from the itemManagers' object pools
-        
+        OrderedItems = new VRC_Pickup[items.Length];
+        for (int i = 0; i < uniqueItems.Length; i++)
+        {
+            if (UniqueItemsStowPointIDs[i].Length > 1)
+            {
+                //create a new array to store the ordered items
+                GameObject[] tempOrderedItems = uniqueItems[i].objectPool.PlayerPreOrderMultiple(UniqueItemsStowPointIDs[i].Length);
+                //put them in the required places in the orderedItemsArray
+                //check if the ordered items exist
+                if (tempOrderedItems != null)
+                {
+                    for (int j = 0; j < UniqueItemsStowPointIDs[i].Length; j++)
+                    {
+                        //check if the orderedItem has a pickup component
+                        if (tempOrderedItems[j].GetComponent<VRC_Pickup>() != null)
+                        {
+                            OrderedItems[UniqueItemsStowPointIDs[i][j]] = tempOrderedItems[j].GetComponent<VRC_Pickup>();
+                        }
+                        else
+                        {
+                            Debug.LogError("Item " + tempOrderedItems[j].name + " does not have a VRC_Pickup component.");
+                        }
+                    }
+                }else
+                {
+                    Debug.LogError("Item " + uniqueItems[i].name + " does not have any pre-ordered items.");
+                }
+
+            }
+            if (UniqueItemsStowPointIDs[i].Length == 1)
+            {
+                OrderedItems[UniqueItemsStowPointIDs[i][0]] = uniqueItems[i].objectPool.PlayerPreOrderSingle().GetComponent<VRC_Pickup>();
+            }
+        }
     }
     public void ApplyLoadout()
     {
         for (int i = 0; i < items.Length; i++)
         {
-            VRC_Pickup targetPickup = items[i].objectPool.TryToSpawn().GetComponent<VRC_Pickup>();
-            TargetStowPoints[i].ForceItemLock(targetPickup);
+            //force lock the ordered items onto the respective stowpoints
+            if (OrderedItems[i] != null)
+            {
+                TargetStowPoints[i].ForceItemLock(OrderedItems[i]);
+            }
         }
     }
 }

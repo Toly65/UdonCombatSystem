@@ -26,7 +26,26 @@ public class ImprovedHitBoxAssigner : UdonSharpBehaviour
         }
         return inputArray;
     }
-
+    public ImprovedHitBoxManager getHitBoxByPlayerID(int playerID)
+    {
+        VRCPlayerApi requestedPlayer = VRCPlayerApi.GetPlayerById(playerID);
+        if(Utilities.IsValid(requestedPlayer))
+        {
+            //find the index of the matching player in the players array
+            for (int i = 0; i < players.Length; i++)
+            {
+                if (players[i] == requestedPlayer)
+                {
+                    return hitboxArray[i];
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("invalid player requested from hitbox assigner");
+        }
+        return null;
+    }
     private void assignHitboxes()
     {
         VRCPlayerApi.GetPlayers(players);
