@@ -1,5 +1,5 @@
 # UdonCombatSystem
-##LATEST VERSIONS REQUIRE THE LATEST UDONSHARP VERSION
+## LATEST VERSIONS REQUIRE THE LATEST UDONSHARP VERSION
 A simple combat system designed for VRchat
 
 relies on https://github.com/Toly65/Udon-Stow-System
