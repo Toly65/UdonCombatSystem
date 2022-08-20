@@ -39,7 +39,7 @@ Projectile weapons should contain any scripted things they are firing out within
 
 hitboxes are managed locally and are pooled in the combat system prefab, any changes to a hitbox will have to be duplicated to refil the pool
 
-##features
+## features
 
 -favour the shooter combat
 
