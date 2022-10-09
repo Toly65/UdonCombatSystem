@@ -31,7 +31,6 @@ public class killTracker : UdonSharpBehaviour
         {
             UpdateKillDisplay();
         }
-       
     }
     public int getKillCount(int playerID)
     {
@@ -58,6 +57,8 @@ public class killTracker : UdonSharpBehaviour
     }
     public void addkill(int KillingPlayer)
     {
+        KillingPlayer++;
+        Debug.Log("adding kill");
         int localplayerKillerID = GetKillerID(localplayer.playerId);
         int killingPlayerID = GetKillerID(KillingPlayer);
         //players who submit a kill are the same people who are dying
@@ -67,13 +68,19 @@ public class killTracker : UdonSharpBehaviour
         }
         deaths[localplayerKillerID] += 1;
 
-        if(!(killingPlayerID < 0))
+        if(killingPlayerID != -1)
         {
+            
+            Debug.Log("giving kill to player " + (KillingPlayer));
             if (kills[killingPlayerID] == null)
             {
                 kills[killingPlayerID] = 0;
             }
             kills[killingPlayerID] += 1;
+        }
+        else
+        {
+            Debug.Log("invalid player ID: " + KillingPlayer);
         }
        
 
@@ -87,9 +94,16 @@ public class killTracker : UdonSharpBehaviour
     public int GetKillerID(int playerID)
     {
         Debug.Log("ID given to check " + playerID);
+        //log the contents of playerIDs
+        string log = "playerIDs: ";
         for (int i = 0; i < playerIDs.Length; i++)
         {
-            if (playerIDs[i]== playerID+1)
+            log += playerIDs[i] + ", ";
+        }
+        Debug.Log(log);
+        for (int i = 0; i < playerIDs.Length; i++)
+        {
+            if (playerIDs[i]== playerID)
             {
                 return i;
             }
@@ -127,8 +141,8 @@ public class killTracker : UdonSharpBehaviour
             if (playerIDs[i] == 0)
             {
                 //space is empty, fill it
-                playerIDs[i] = player.playerId + 1;
-                Debug.Log("playerIDs " + i + "filled with" + (player.playerId + 1));
+                playerIDs[i] = player.playerId;
+                Debug.Log("playerIDs " + i + "filled with" + (player.playerId));
                 kills[i] = 0;
                 deaths[i] = 0;
                 //send changes to network
@@ -163,6 +177,8 @@ public class killTracker : UdonSharpBehaviour
             {
                 Debug.Log("player killerID " + PlayerKillID);
                 Debug.Log("player name " + players[i].displayName);
+                Debug.Log("player kills" + kills[PlayerKillID]);
+                Debug.Log("player Deaths" + deaths[PlayerKillID]);
                 playernamesToSubmit[i] = players[i].displayName;
                 playerkillsToSubmit[i] = kills[PlayerKillID];
                 playerDeathsToSubmit[i] = deaths[PlayerKillID];

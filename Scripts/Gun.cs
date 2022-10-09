@@ -19,7 +19,7 @@ public class Gun : UdonSharpBehaviour
     public Transform firePosition;
     public float fireVelocity = 5f;
     [UdonSynced] public int AmmoCount = 5;
-    public float reloadTime = 15f;
+    
     public float BulletSpread = 10f;
     public bool automaticReload = true;
     [Tooltip("gunshot, magpull, maginsert, gun cock")]
@@ -32,6 +32,11 @@ public class Gun : UdonSharpBehaviour
     public GameObject terrainRaycastSpark;
     public LayerMask sparkable;
     public LayerMask players;
+    [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
+    public Transform[] barrels;
+    public bool fireAllBarrelsAtOnce;
+    public bool ammoCountDependsOnBarrels;
+    private int currentBarrel = 0;
     [Header("Rigibody projectile, requires raycast to be off")]
     public GameObject bullet;
     [Header("physics stuff, only add if you're putting this on a vehicle")]
@@ -52,19 +57,25 @@ public class Gun : UdonSharpBehaviour
     private bool isreloadingaudio = true;
     private VRCPlayerApi localPlayer;
     private bool DesktopUser;
-   // [UdonSynced]private VRCPlayerApi owner;
-
+    // [UdonSynced]private VRCPlayerApi owner;
+    [Header("animation settings")]
     public Animator GunAnimator;
     public AnimationClip CycleAnimation;
-    public AnimationClip ReloadAnimation;
-    public ParticleSystem ShellParticle;
-    [Header("particles are visual only")]
-    public ParticleSystem gunShotParticle;
-
-    private float firedTime;
     public bool BaseCycleOffAnimation;
     public float CycleTime;
+    public AnimationClip ReloadAnimation;
+    public float reloadTime = 15f;
+    public bool BaseReloadTimeOffAnimation;
+    public ParticleSystem ShellParticle;
+    public ParticleSystem gunShotParticle;
+    public Animator magazineAnimator;
+    public string MagazineAnimatorVariable = "AmmoPercentage";
+    [Header("particles are visual only")]
+    
 
+    private float firedTime;
+    private int MagazineAnimatorVariableHash;    
+    
     private string AnimName;
     private bool Firing = false;
     private bool Scoped;
@@ -123,7 +134,10 @@ public class Gun : UdonSharpBehaviour
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
-
+        if (magazineAnimator)
+        {
+            MagazineAnimatorVariableHash = Animator.StringToHash(MagazineAnimatorVariable);
+        }
         //audio = (AudioSource)gameObject.GetComponent(typeof(AudioSource));
         if (!localPlayer.IsUserInVR())
         {
@@ -134,17 +148,23 @@ public class Gun : UdonSharpBehaviour
             DesktopUser = false;
         }
 
-        MaxAmmo = AmmoCount;
+        
         Debug.Log("Ammo Left: " + AmmoCount);
 
-        
-
+        if(ammoCountDependsOnBarrels)
+        {
+            AmmoCount = barrels.Length;
+        }
+        MaxAmmo = AmmoCount;
 
         if (BaseCycleOffAnimation&&CycleAnimation)
         {
             CycleTime = CycleAnimation.length;
         }
-
+        if (BaseReloadTimeOffAnimation && ReloadAnimation)
+        {
+            reloadTime = ReloadAnimation.length;
+        }
     }
     public void Pickup()
     {
@@ -176,7 +196,7 @@ public class Gun : UdonSharpBehaviour
         }
         
 
-        if (AmmoCount <= 0 && AmmoCheck && localPlayer == Networking.GetOwner(gameObject)&&automaticReload)
+        if (AmmoCount <= 0 && AmmoCheck && automaticReload)
         {
             Reload();
             AmmoCheck = false;
@@ -327,7 +347,20 @@ public class Gun : UdonSharpBehaviour
     }
     public void Fire()
     {
-        
+        if(barrels.Length!=0)
+        {
+            firePosition.position = barrels[currentBarrel].position;
+            Debug.Log("fire position changed to new barrel " + currentBarrel);
+            //select the next available current barrel
+            if (currentBarrel < barrels.Length - 1)
+            {
+                currentBarrel++;
+            }
+            else
+            {
+                currentBarrel = 0;
+            }
+        }
         
         if (Time.time - firedTime < CycleTime && !Automatic)
         {
@@ -338,6 +371,10 @@ public class Gun : UdonSharpBehaviour
         if (infiniteAmmo)
         {
             AmmoCount++;
+        }
+        if(magazineAnimator)
+        {
+            magazineAnimator.SetFloat(MagazineAnimatorVariableHash, AmmoCount / MaxAmmo);
         }
         if (AmmoCount > 0)
         {
@@ -395,9 +432,10 @@ public class Gun : UdonSharpBehaviour
                         firePosition.position = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
                         firePosition.rotation = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
                     }
-
+                    Quaternion temp = firePosition.localRotation;
+                    firePosition.Rotate(Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread), Random.Range(-BulletSpread, BulletSpread));
                     BulletRaycast();
-                    
+                    firePosition.localRotation = temp;
 
                     if (GunAnimator && CycleAnimation)
                     {
@@ -525,5 +563,10 @@ public class Gun : UdonSharpBehaviour
         currentTime = Time.time;
         wantedTime = currentTime + reloadTime;
         startTimer = true;
+        //send changes to network
+        if(localPlayer.IsOwner(gameObject))
+        {
+            RequestSerialization();
+        }
     }
 }

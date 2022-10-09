@@ -142,9 +142,6 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         }
         //if this is reached there are no free places
         optedIn = false;
-
-        
-
     }
     public void _OptOut()
     {

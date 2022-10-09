@@ -709,6 +709,8 @@ GameObject:
   - component: {fileID: 7714740809804545254}
   - component: {fileID: 6850778608209698773}
   - component: {fileID: 6563709354266371314}
+  - component: {fileID: 7977077679134464181}
+  - component: {fileID: 161473743082741654}
   m_Layer: 13
   m_Name: Scripts
   m_TagString: Untagged
@@ -762,7 +764,6 @@ MonoBehaviour:
   firePosition: {fileID: 6583597998584336898}
   fireVelocity: 100
   AmmoCount: 15
-  reloadTime: 3
   BulletSpread: 1
   automaticReload: 1
   clips:
@@ -779,10 +780,13 @@ MonoBehaviour:
     type: 3}
   sparkable:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 2049
   players:
     serializedVersion: 2
     m_Bits: 1
+  barrels: []
+  fireAllBarrelsAtOnce: 0
+  ammoCountDependsOnBarrels: 0
   bullet: {fileID: 0}
   targetRigidbody: {fileID: 0}
   forceFromBarrel: 0
@@ -794,11 +798,15 @@ MonoBehaviour:
   audio: {fileID: 0}
   GunAnimator: {fileID: 3399561053264204547}
   CycleAnimation: {fileID: 7400000, guid: 7ce7df2a7595cd04bae55d24b50ea5cf, type: 2}
-  ReloadAnimation: {fileID: 0}
-  ShellParticle: {fileID: 2727196873397172340}
-  gunShotParticle: {fileID: 0}
   BaseCycleOffAnimation: 1
   CycleTime: 0.2
+  ReloadAnimation: {fileID: 0}
+  reloadTime: 3
+  BaseReloadTimeOffAnimation: 0
+  ShellParticle: {fileID: 2727196873397172340}
+  gunShotParticle: {fileID: 0}
+  magazineAnimator: {fileID: 0}
+  MagazineAnimatorVariable: AmmoPercentage
 --- !u!114 &6563709354266371314
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -825,6 +833,120 @@ MonoBehaviour:
   serializedPublicVariablesBytesString: Ai8AAAAAATIAAABWAFIAQwAuAFUAZABvAG4ALgBDAG8AbQBtAG8AbgAuAFUAZABvAG4AVgBhAHIAaQBhAGIAbABlAFQAYQBiAGwAZQAsACAAVgBSAEMALgBVAGQAbwBuAC4AQwBvAG0AbQBvAG4AAAAAAAYBAAAAAAAAACcBBAAAAHQAeQBwAGUAAWgAAABTAHkAcwB0AGUAbQAuAEMAbwBsAGwAZQBjAHQAaQBvAG4AcwAuAEcAZQBuAGUAcgBpAGMALgBMAGkAcwB0AGAAMQBbAFsAVgBSAEMALgBVAGQAbwBuAC4AQwBvAG0AbQBvAG4ALgBJAG4AdABlAHIAZgBhAGMAZQBzAC4ASQBVAGQAbwBuAFYAYQByAGkAYQBiAGwAZQAsACAAVgBSAEMALgBVAGQAbwBuAC4AQwBvAG0AbQBvAG4AXQBdACwAIABtAHMAYwBvAHIAbABpAGIAAQEJAAAAVgBhAHIAaQBhAGIAbABlAHMALwEAAAABaAAAAFMAeQBzAHQAZQBtAC4AQwBvAGwAbABlAGMAdABpAG8AbgBzAC4ARwBlAG4AZQByAGkAYwAuAEwAaQBzAHQAYAAxAFsAWwBWAFIAQwAuAFUAZABvAG4ALgBDAG8AbQBtAG8AbgAuAEkAbgB0AGUAcgBmAGEAYwBlAHMALgBJAFUAZABvAG4AVgBhAHIAaQBhAGIAbABlACwAIABWAFIAQwAuAFUAZABvAG4ALgBDAG8AbQBtAG8AbgBdAF0ALAAgAG0AcwBjAG8AcgBsAGkAYgABAAAABgEAAAAAAAAAAi8CAAAAAUkAAABWAFIAQwAuAFUAZABvAG4ALgBDAG8AbQBtAG8AbgAuAFUAZABvAG4AVgBhAHIAaQBhAGIAbABlAGAAMQBbAFsAUwB5AHMAdABlAG0ALgBJAG4AdAAzADIALAAgAG0AcwBjAG8AcgBsAGkAYgBdAF0ALAAgAFYAUgBDAC4AVQBkAG8AbgAuAEMAbwBtAG0AbwBuAAIAAAAGAgAAAAAAAAAnAQQAAAB0AHkAcABlAAEXAAAAUwB5AHMAdABlAG0ALgBTAHQAcgBpAG4AZwAsACAAbQBzAGMAbwByAGwAaQBiACcBCgAAAFMAeQBtAGIAbwBsAE4AYQBtAGUAAR8AAABfAF8AXwBVAGQAbwBuAFMAaABhAHIAcABCAGUAaABhAHYAaQBvAHUAcgBWAGUAcgBzAGkAbwBuAF8AXwBfACcBBAAAAHQAeQBwAGUAARYAAABTAHkAcwB0AGUAbQAuAEkAbgB0ADMAMgAsACAAbQBzAGMAbwByAGwAaQBiABcBBQAAAFYAYQBsAHUAZQACAAAABwUHBQcF
   publicVariablesUnityEngineObjects: []
   publicVariablesSerializationDataFormat: 0
+--- !u!82 &7977077679134464181
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2087164853719282441}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 1
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &161473743082741654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2087164853719282441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -617992517, guid: 661092b4961be7145bfbe56e1e62337b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Gain: 10
+  Far: 40
+  Near: 2
+  VolumetricRadius: 0
+  EnableSpatialization: 1
+  UseAudioSourceVolumeCurve: 0
 --- !u!1 &2166281585607391887
 GameObject:
   m_ObjectHideFlags: 0
@@ -1743,7 +1865,7 @@ MonoBehaviour:
   ExactGrip: {fileID: 0}
   allowManipulationWhenEquipped: 0
   orientation: 2
-  AutoHold: 0
+  AutoHold: 1
   InteractionText: 
   UseText: Use
   useEventBroadcastType: 0
@@ -2169,15 +2291,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2174359a25780464382213afd9e59913, type: 3}
---- !u!4 &4759333826653333879 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 7463646184435167883, guid: 2174359a25780464382213afd9e59913,
-    type: 3}
-  m_PrefabInstance: {fileID: 2709124422800317436}
-  m_PrefabAsset: {fileID: 0}
 --- !u!198 &2727196873397172340 stripped
 ParticleSystem:
   m_CorrespondingSourceObject: {fileID: 18099423800058760, guid: 2174359a25780464382213afd9e59913,
+    type: 3}
+  m_PrefabInstance: {fileID: 2709124422800317436}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4759333826653333879 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7463646184435167883, guid: 2174359a25780464382213afd9e59913,
     type: 3}
   m_PrefabInstance: {fileID: 2709124422800317436}
   m_PrefabAsset: {fileID: 0}

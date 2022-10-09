@@ -21,7 +21,6 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
     public Transform HeadTransform;
     [HideInInspector]public int playerID;
     [UdonSynced]public int LastPlayerWhoDamagedID;
-    private bool damageBeingInflicted;
     public Transform TeamIndicatorParent;
     [HideInInspector]public int teamID;
 
@@ -46,22 +45,15 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
     public void attemptDamageApplication(float damage)
     {
         Debug.Log("Damage Applicaiton Attempted");
+        Networking.SetOwner(localplayer,gameObject);
         damageApplied = damage;
         LastPlayerWhoDamagedID = localplayer.playerId;
-        Networking.SetOwner(localplayer,gameObject);
         RequestSerialization();
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkedDamage");
-        
     }
     public void OnPlayerLeft(VRCPlayerApi player)
     {
         damageApplied = 0;
         RequestSerialization();
-    }
-    public void NetworkedDamage()
-    {
-        Debug.Log("damage Infliction Set");
-        damageBeingInflicted = true;
     }
 
     public void OnDeserialization()

@@ -3,7 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 [AddComponentMenu("")]
 public class BuffManager : UdonSharpBehaviour
 {
