@@ -41,7 +41,6 @@ public class Gun : UdonSharpBehaviour
     
     public Text Display;
     public GameObject secondGrip;
-    public ScopeManager scope;
     public HUDAmmoCount ammoCountHud;
 
     [HideInInspector]public int MaxAmmo;
@@ -146,18 +145,11 @@ public class Gun : UdonSharpBehaviour
             CycleTime = CycleAnimation.length;
         }
 
-        if (scope != null)
-        {
-            Scoped = true;
-        }
     }
     public void Pickup()
     {
         //owner = localPlayer;
-        if (Scoped)
-        {
-            scope.ManageScope();
-        }
+        
         if(secondGrip != null)
         {
             secondGrip.SetActive(true);

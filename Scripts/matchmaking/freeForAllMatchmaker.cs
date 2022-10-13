@@ -21,6 +21,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     public Transform LobbySpawn;
     public killTracker Killtracker;
     public killScoreboardDisplay killScoreboardDisplay;
+    public BetterObjectPool[] objectPools;
     [Header("win Display Stuff")]
     public GameObject WinDisplay;
     public GameObject nameDisplayTemplate;
@@ -36,6 +37,8 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     [Header("optional addons")]
     public GameObject matchUI;
     public KillCounter killCounter;
+    public Text timeDisplay;
+    public loadoutmanager LoadoutManager;
 
     [Header("set these to be the player limit, don't change the contents")]
     [SerializeField][UdonSynced] private int[] optedplayerIDs = new int[12];
@@ -50,6 +53,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     private int ID;
     [UdonSynced] private bool matchrunning = false;
     private float WinTime;
+    private float TimeRemaining;
 
     private void Start()
     {
@@ -122,6 +126,14 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
                 {
                     startButton.interactable = true;
                 }
+                if (LoadoutManager != null)
+                {
+                    if (LoadoutManager.SelectionButton.interactable == true)
+                    {
+                        LoadoutManager.DisplayLoadout();
+                        LoadoutManager.SelectDisplayedLoadout();
+                    }
+                }
                 Networking.SetOwner(localPlayer, gameObject);
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(UpdateKillScoreboard));
                 RequestSerialization();
@@ -157,12 +169,22 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         {
             inMatch = true;
             healthManager.SetOptState(true);
+            //check if the loadoutmanager exists and apply the selected loadout
+            if (LoadoutManager != null)
+            {
+                LoadoutManager.ApplySelectedLoadout();
+            }
             //run locally
             ID = findID();
             int TeleportIndex = Random.Range(0, spawnLocations.Length - 1);
             localPlayer.TeleportTo(spawnLocations[TeleportIndex].position, spawnLocations[TeleportIndex].rotation);
             originalSpawnpoints = healthManager.RespawnPoint;
             healthManager.RespawnPoint = spawnLocations;
+            TimeRemaining = maxTimeInSeconds;
+            if (matchUI)
+            {
+                matchUI.SetActive(true);
+            }
         }
         
     }
@@ -222,6 +244,11 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
             killCounter.SetOriginalKillCountFromKillTracker();
             killCounter.DisplayCurrentKills();
         }
+        //have all objectpools fulfill all orders
+        for (int i = 0; i < objectPools.Length; i++)
+        {
+            objectPools[i].FulfillAllPreOrders();
+        }
         RequestSerialization();
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(TeleportOptedPlayers));
     }
@@ -229,8 +256,10 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     public void _DeclareMatchEnd()
     {
         //for timer events only have the owner call this event
+        matchrunning = false;
         Networking.SetOwner(localPlayer, gameObject);
-        
+        RequestSerialization();
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(EndMatch));
     }
     public void addWinnerToDisplay(int playerID)
     {
@@ -280,7 +309,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         }
         //enable the win display
         WinDisplay.SetActive(true);
-        WinTime = Time.time;
+        WinTime = winDisplayTime;
         if(matchUI)
         {
             matchUI.SetActive(false);
@@ -293,6 +322,8 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
             healthManager.SetOptState(false);
             inMatch = false;
         }
+        //reset all items
+        LoadoutManager.returnAllItems();
     }
     public void leaveMatch()
     {
@@ -302,6 +333,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
             healthManager.SetOptState(false);
             healthManager.RespawnPoint = originalSpawnpoints;
             inMatch = false;
+            LoadoutManager.returnAllItems();
         }
     }
     public void OnPlayerRespawn(VRCPlayerApi player)
@@ -329,20 +361,30 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         {
             //check if player is opted
             int internalID = findID();
-            if (optedIn && internalID != -1)
+            if (ID != -1)
             {//check if localplayer has hit the kill limit
-                
-                if(originalPlayerKills[internalID] - Killtracker.getKillCount(localPlayer.playerId) >= maxKillForMatchEnd)
+
+                if ((Killtracker.getKillCount(localPlayer.playerId) - originalPlayerKills[internalID]  ) >= maxKillForMatchEnd)
                 {
                     //player has enough kills call for end of match
                     _DeclareMatchEnd();
                 }
             }
+            else
+            {
+                Debug.Log("player not opted in");
+            }
         }
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(UpdateKillScoreboard));
     }
+    public void TestWinDisplay()
+    {
+        WinDisplay.SetActive(true);
+        WinTime = winDisplayTime;
+    }
     public void UpdateKillScoreboard()
     {
+        
         if (killScoreboardDisplay)
         {
             string[] validNames = new string[optedplayerIDs.Length];
@@ -359,9 +401,10 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
                     VRCPlayerApi player = VRCPlayerApi.GetPlayerById(playerID);
                     if (Utilities.IsValid(player))
                     {
-                        validPlayerCounter++;
+                        
                         validNames[i] = player.displayName;
                         validIDs[i] = true;
+                        validPlayerCounter++;
                     }
                 }
             }
@@ -387,10 +430,41 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     }
     public void Update()
     {
-        if (Time.time - WinTime > winDisplayTime)
+        if (WinDisplay.activeSelf)
         {
-            WinDisplay.SetActive(false);
+            WinTime -= Time.deltaTime;
+            if (WinTime <= 0)
+            {
+                WinDisplay.SetActive(false);
+            }
         }
+        if (matchrunning && (endCondition == endCon.Timer || endCondition == endCon.killLimitAndTimer))
+        {
+            if(TimeRemaining > 0)
+            {
+
+                TimeRemaining -= Time.deltaTime;
+                if (TimeRemaining < 0)
+                {
+                    TimeRemaining = 0;
+                }
+                if (timeDisplay)
+                {
+                    //display time in minutes and seconds
+                    int minutes = (int)TimeRemaining / 60;
+                    int seconds = (int)TimeRemaining % 60;
+                    timeDisplay.text = minutes.ToString("00") + ":" + seconds.ToString("00");
+                }
+            }
+            else
+            {
+                if(localPlayer == Networking.GetOwner(gameObject))
+                {
+                    _DeclareMatchEnd();
+                }
+            }
+        }
+        
     }
     public void OnDeserialization()
     {

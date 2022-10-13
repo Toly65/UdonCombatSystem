@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: HealthManager
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: fccbbcc84251a174d9782f5a0bcca93b,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: e925e76c51d268c46ab0df462cec7b1f,
     type: 2}
   udonAssembly: 
   assemblyError: 

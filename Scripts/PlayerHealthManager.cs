@@ -24,7 +24,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
 
     public UdonBehaviour OnDeathBehaviour;
     public string DeathFunction;
-    private VRCPlayerApi localPLayer;
+    private VRCPlayerApi localPlayer;
     // private String PlayerTag = "[Player]";
 
     public bool RespawnTimer = true;
@@ -45,7 +45,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
     
     private void Start()
     {
-        localPLayer = Networking.LocalPlayer;
+        localPlayer = Networking.LocalPlayer;
         CurrentHealth = RespawnHealth;
 
         //localPLayer.CombatSetMaxHitpoints(CurrentHealth);
@@ -120,7 +120,9 @@ public class PlayerHealthManager : UdonSharpBehaviour
         }
         if(Killtracker)
         {
-            Killtracker.addkill(hitBoxAssigner.hitboxArray[localPLayer.playerId].LastPlayerWhoDamagedID);
+            //this line is an issue
+            //Killtracker.addkill(hitBoxAssigner.hitboxArray[localPLayer.playerId].LastPlayerWhoDamagedID);
+            Killtracker.addkill(hitBoxAssigner.getHitBoxByPlayerID(localPlayer.playerId).LastPlayerWhoDamagedID);
         }
     }
 
@@ -128,7 +130,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
     {
         Debug.Log("respawn Triggerd");
         int respawnIndex = Random.Range(0, RespawnPoint.Length-1);
-        localPLayer.TeleportTo(RespawnPoint[respawnIndex].position, RespawnPoint[respawnIndex].rotation);
+        localPlayer.TeleportTo(RespawnPoint[respawnIndex].position, RespawnPoint[respawnIndex].rotation);
         
         CurrentHealth = RespawnHealth;
         //localPLayer.CombatSetCurrentHitpoints(RespawnHealth);

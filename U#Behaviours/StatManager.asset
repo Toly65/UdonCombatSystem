@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: StatManager
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 93aef70905f174048a94298c89c91c4e,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 1eab4cee803b0c149994be154c6865be,
     type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: a7a9e444feeec574fadd4e7666470b68, type: 3}
   scriptVersion: 2
   compiledVersion: 2
-  behaviourSyncMode: 0
+  behaviourSyncMode: 1
   hasInteractEvent: 0
   scriptID: 1740787272162693051
   serializationData:
