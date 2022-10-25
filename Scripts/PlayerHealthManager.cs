@@ -82,6 +82,12 @@ public class PlayerHealthManager : UdonSharpBehaviour
             else
             {
                 CurrentHealth += Damage;
+                //cap the health at max health
+                Mathf.Clamp(CurrentHealth, 0.0f, RespawnHealth);
+                if (CurrentHealth > RespawnHealth)
+                {
+                    CurrentHealth = RespawnHealth;
+                }
             }
         }else
         {
@@ -91,7 +97,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
 
 
 
-    private void FixedUpdate()
+    private void Update()
     {
         //health stuff
         if (CurrentHealth <= 0f && !Dead)
@@ -122,6 +128,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
         {
             //this line is an issue
             //Killtracker.addkill(hitBoxAssigner.hitboxArray[localPLayer.playerId].LastPlayerWhoDamagedID);
+            Debug.Log("killed by playerid " + hitBoxAssigner.getHitBoxByPlayerID(localPlayer.playerId).LastPlayerWhoDamagedID);
             Killtracker.addkill(hitBoxAssigner.getHitBoxByPlayerID(localPlayer.playerId).LastPlayerWhoDamagedID);
         }
     }

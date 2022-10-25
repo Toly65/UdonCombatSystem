@@ -117,10 +117,10 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         //check for unused places
         for (int i = 0; i < optedplayerIDs.Length; i++)
         {
-            if (!Utilities.IsValid(optedplayerIDs[i] - 1)||optedplayerIDs[i] == 0)
+            if (!Utilities.IsValid(optedplayerIDs[i])||optedplayerIDs[i] == 0)
             {
                 Debug.Log("populating space " + i + " with ID: " + localPlayer.playerId);
-                optedplayerIDs[i] = localPlayer.playerId + 1;
+                optedplayerIDs[i] = localPlayer.playerId;
                 Debug.Log("shifting ID to: " + optedplayerIDs[i]);
                 if (!matchrunning)
                 {
@@ -142,16 +142,13 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         }
         //if this is reached there are no free places
         optedIn = false;
-
-        
-
     }
     public void _OptOut()
     {
         //remove self from list
         for (int i = 0; i < optedplayerIDs.Length; i++)
         {
-            if (optedplayerIDs[i] - 1 == localPlayer.playerId)
+            if (optedplayerIDs[i] == localPlayer.playerId)
             {
                 optedplayerIDs[i] = 0;
                 startButton.interactable = false;
@@ -183,6 +180,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
             TimeRemaining = maxTimeInSeconds;
             if (matchUI)
             {
+                Debug.Log("setting match UI active");
                 matchUI.SetActive(true);
             }
         }
@@ -192,10 +190,10 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     public int findID()
     {
         int playerID = localPlayer.playerId;
-        
+
         for (int i = 0; i < optedplayerIDs.Length; i++)
         {
-            if(optedplayerIDs[i]-1 == playerID)
+            if (optedplayerIDs[i] == playerID)
             {
                 return i;
             }
@@ -232,11 +230,12 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         //find all the players' current kills
         for (int i = 0; i < optedplayerIDs.Length; i++)
         {
-            originalPlayerKills[i] = Killtracker.getKillCount(optedplayerIDs[i]-1);
-            originalPlayerDeaths[i] = Killtracker.getDeathCount(optedplayerIDs[i] - 1);
+            originalPlayerKills[i] = Killtracker.getKillCount(optedplayerIDs[i]);
+            originalPlayerDeaths[i] = Killtracker.getDeathCount(optedplayerIDs[i]);
         }
         if(matchUI)
         {
+            Debug.Log("setting match UI active");
             matchUI.SetActive(true);
         }
         if (killCounter)
@@ -255,6 +254,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     // make an end match function
     public void _DeclareMatchEnd()
     {
+        Debug.Log("match ended");
         //for timer events only have the owner call this event
         matchrunning = false;
         Networking.SetOwner(localPlayer, gameObject);
@@ -263,8 +263,15 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     }
     public void addWinnerToDisplay(int playerID)
     {
+        Debug.Log("adding player " + playerID + " to the winner display");
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(playerID);
-        GameObject newNameDisplayTag = Object.Instantiate(nameDisplayTemplate);
+        //validate the player
+        if(!Utilities.IsValid(player))
+        {
+            Debug.Log("player is not valid");
+            return;
+        }
+        GameObject newNameDisplayTag = GameObject.Instantiate(nameDisplayTemplate);
         Text nameText = (Text)newNameDisplayTag.transform.GetChild(0).GetComponent(typeof(Text));
         nameText.text = player.displayName;
 
@@ -285,7 +292,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         int[] kills = new int[originalPlayerKills.Length];
         for (int i = 0; i < kills.Length; i++)
         {
-            kills[i] = Killtracker.getKillCount(optedplayerIDs[i] - 1) - originalPlayerKills[i];
+            kills[i] = Killtracker.getKillCount(optedplayerIDs[i]) - originalPlayerKills[i];
         }
         //check the highest amount of kills
         int highestKillCount = Mathf.Max(kills);
@@ -295,7 +302,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         {
             if(kills[i] == highestKillCount)
             {
-                addWinnerToDisplay(optedplayerIDs[i] - 1);
+                addWinnerToDisplay(optedplayerIDs[i]);
                 winnerCount++;
             }
         }
@@ -312,6 +319,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         WinTime = winDisplayTime;
         if(matchUI)
         {
+
             matchUI.SetActive(false);
         }
         //teleport players back
@@ -397,7 +405,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
                 if (optedplayerIDs[i] != 0)
                 {
                     //get the true ID and validate it
-                    int playerID = optedplayerIDs[i] - 1;
+                    int playerID = optedplayerIDs[i];
                     VRCPlayerApi player = VRCPlayerApi.GetPlayerById(playerID);
                     if (Utilities.IsValid(player))
                     {
