@@ -3,15 +3,15 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-
+using VRC.SDK3.Components;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 
 [AddComponentMenu("")]
 public class PlayerHealthManager : UdonSharpBehaviour
 {
-    
 
-    [HideInInspector]public float CurrentHealth = 100.0f;
+
+    [HideInInspector] public float CurrentHealth = 100.0f;
     public float RespawnHealth = 100.0f;
 
     [Header("HealthMangerAddons")]
@@ -34,7 +34,8 @@ public class PlayerHealthManager : UdonSharpBehaviour
     public float RespawnTime = 5f;
     public killTracker Killtracker;
     public ImprovedHitBoxAssigner hitBoxAssigner;
-
+    [SerializeField] private bool dropItemsOnDeath;
+    [SerializeField] private bool returnItemsToPoolOnDeath;
     private float deathTimerStart;
 
     [SerializeField] private bool optState = true;
@@ -131,8 +132,49 @@ public class PlayerHealthManager : UdonSharpBehaviour
             Debug.Log("killed by playerid " + hitBoxAssigner.getHitBoxByPlayerID(localPlayer.playerId).LastPlayerWhoDamagedID);
             Killtracker.addkill(hitBoxAssigner.getHitBoxByPlayerID(localPlayer.playerId).LastPlayerWhoDamagedID);
         }
+        if(dropItemsOnDeath)
+        {
+            //get the items in the localplayers hands
+            VRC_Pickup leftHandItem = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Left);
+            VRC_Pickup rightHandItem = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Right);
+            //drop the items
+            if (leftHandItem)
+            {
+                leftHandItem.Drop();
+            }
+            if (rightHandItem)
+            {
+                rightHandItem.Drop();
+            }
+            if (returnItemsToPoolOnDeath)
+            {
+                if (leftHandItem)
+                {
+                    ReturnItemToPool(leftHandItem.gameObject);
+                }
+                if (rightHandItem)
+                {
+                    ReturnItemToPool(rightHandItem.gameObject);
+                }
+            }
+        }
     }
-
+    private void ReturnItemToPool(GameObject item)
+    {
+        GameObject parentGameobject = item.transform.parent.gameObject;
+        if (parentGameobject.GetComponent<VRCObjectPool>())
+        {
+            Networking.SetOwner(localPlayer, parentGameobject);
+            parentGameobject.GetComponent<VRCObjectPool>().Return(item);
+            return;
+        }
+        if(parentGameobject.GetComponent<BetterObjectPool>())
+        {
+            Networking.SetOwner(localPlayer, parentGameobject);
+            parentGameobject.GetComponent<BetterObjectPool>().ReturnObject(item);
+            return;
+        }  
+    }
     public void RespawnObject()
     {
         Debug.Log("respawn Triggerd");

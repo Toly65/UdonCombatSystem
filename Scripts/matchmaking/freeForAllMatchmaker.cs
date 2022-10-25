@@ -330,6 +330,18 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
             healthManager.SetOptState(false);
             inMatch = false;
         }
+        //check both hands for items and force them to be dropped
+        VRC_Pickup leftHandItem = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Left);
+        VRC_Pickup rightHandItem = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Right);
+
+        if (Utilities.IsValid(leftHandItem))
+        {
+            leftHandItem.Drop();
+        }
+        if (Utilities.IsValid(rightHandItem))
+        {
+            rightHandItem.Drop();
+        }
         //reset all items
         LoadoutManager.returnAllItems();
     }
