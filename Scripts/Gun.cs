@@ -4,44 +4,64 @@ using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.SDK3.Components;
+using UnityEngine.XR;
+
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 [AddComponentMenu("")]
 public class Gun : UdonSharpBehaviour
 {
     [Header("general settings")]
     public bool infiniteAmmo;
-    public float maxDistance;
+    [SerializeField]private float maxDistance;
     public float RaycastDamageAmount;
-    public VRC_Pickup pickup;
-    public bool shotgun = false;
-    public int pelletCount;
-    public bool Automatic = false;
-    public Transform firePosition;
-    public float fireVelocity = 5f;
-    [UdonSynced] public int AmmoCount = 5;
+    [SerializeField]private bool shotgun = false;
+    [SerializeField]private int pelletCount;
+    [SerializeField]private bool Automatic = false;
+    [SerializeField]private Transform firePosition;
     
-    public float BulletSpread = 10f;
-    public bool automaticReload = true;
-    [Tooltip("gunshot, magpull, maginsert, gun cock")]
+    [UdonSynced]public int AmmoCount = 5;
+    
+    [SerializeField]private float BulletSpread = 10f;
+    [SerializeField] bool automaticReload = true;
+    
+    [Header("gunshot, magpull, maginsert, gun cock")]
     public AudioClip[] clips = new AudioClip[4];
+    
     [Header("raycast settings")]
     public bool RaycastDamage = true;
-    public bool RaycastBulletDrop;
-    public bool desktopFaceFiring;
-    public GameObject playerRaycastSpark;
-    public GameObject terrainRaycastSpark;
-    public LayerMask sparkable;
-    public LayerMask players;
-    [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
-    public Transform[] barrels;
-    public bool fireAllBarrelsAtOnce;
-    public bool ammoCountDependsOnBarrels;
-    private int currentBarrel = 0;
+    [SerializeField]private bool RaycastBulletDrop;
+    [SerializeField]private bool desktopFaceFiring;
+    [SerializeField]private GameObject playerRaycastSpark;
+    [SerializeField]private GameObject terrainRaycastSpark;
+    [SerializeField]private LayerMask sparkable;
+    [SerializeField]private LayerMask players;
+    
     [Header("Rigibody projectile, requires raycast to be off")]
     public GameObject bullet;
+    public float fireVelocity = 5f;
+
+    [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
+    [SerializeField]private Transform[] barrels;
+    [SerializeField]private bool fireAllBarrelsAtOnce;
+    [SerializeField]public bool ammoCountDependsOnBarrels;
+    private int currentBarrel = 0;
+    
+    
     [Header("physics stuff, only add if you're putting this on a vehicle")]
-    public Rigidbody targetRigidbody;
-    public float forceFromBarrel;
+    [SerializeField] Rigidbody targetRigidbody;
+    [SerializeField]private float forceFromBarrel;
+    
+    [Header("haptic feedback")]
+    public bool hapticFeedback;
+    [SerializeField]private float hapticFeedbackDuration = 0.1f;
+    [SerializeField]private float hapticFeedbackAmplitude = 1;
+    [SerializeField]private float hapticFeedbackFrequency = 1;
+    [SerializeField]private bool hapticFeedbackOnManualReload;
+    [SerializeField]private VRC_Pickup secondaryGripPickup;
+    [SerializeField]private VRC_Pickup pickup;
+
+    [Header("Manual Reload")]
+
     [Header("addons")]
     
     public Text Display;
@@ -79,6 +99,7 @@ public class Gun : UdonSharpBehaviour
     private string AnimName;
     private bool Firing = false;
     private bool Scoped;
+    private VRC_Pickup.PickupHand hand;
 
     public void TriggerPull()
     {
@@ -174,10 +195,22 @@ public class Gun : UdonSharpBehaviour
         {
             secondGrip.SetActive(true);
         }
-        if(ammoCountHud)
+        //find which hand the current pickup is in
+        if (!pickup)
+            return;
+        if (localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Left) == pickup)
         {
-
+            hand = VRC_Pickup.PickupHand.Left;
         }
+        else if (localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Right) == pickup)
+        {
+            hand = VRC_Pickup.PickupHand.Right;
+        }
+        else
+        {
+            hand = VRC_Pickup.PickupHand.None;
+        }
+
     }
 
     public void Drop()
@@ -347,6 +380,7 @@ public class Gun : UdonSharpBehaviour
     }
     public void Fire()
     {
+       
         if(barrels.Length!=0)
         {
             firePosition.position = barrels[currentBarrel].position;
@@ -378,7 +412,25 @@ public class Gun : UdonSharpBehaviour
         }
         if (AmmoCount > 0)
         {
-
+            if (hapticFeedback&&pickup)
+            {
+                Networking.LocalPlayer.PlayHapticEventInHand(hand, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                if(secondaryGripPickup)
+                {
+                    if(secondaryGripPickup.IsHeld)
+                    {
+                        //get the opposite hand to play a haptic event
+                        if(hand == VRC_Pickup.PickupHand.Left)
+                        {
+                            Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                        }
+                        else
+                        {
+                            Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                        }
+                    }
+                }
+            }
             if (targetRigidbody && localPlayer == Networking.GetOwner(targetRigidbody.gameObject))
             {
                 targetRigidbody.AddForceAtPosition((-firePosition.forward) * forceFromBarrel, firePosition.position);

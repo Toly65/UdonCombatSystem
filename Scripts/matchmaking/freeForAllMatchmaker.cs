@@ -54,7 +54,7 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     [UdonSynced] private bool matchrunning = false;
     private float WinTime;
     private float TimeRemaining;
-
+    private bool teleportPlayerBackToSpawn;
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -326,7 +326,8 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
         if(inMatch)
         {
             healthManager.RespawnPoint = originalSpawnpoints;
-            localPlayer.TeleportTo(LobbySpawn.position, LobbySpawn.rotation);
+            //localPlayer.TeleportTo(LobbySpawn.position, LobbySpawn.rotation);
+            teleportPlayerBackToSpawn = true;
             healthManager.SetOptState(false);
             inMatch = false;
         }
@@ -373,7 +374,8 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
     }
     public void _KillTrackerKillRecieved()
     {
-        if(killCounter)
+        Debug.Log("kill recieved");
+        if (killCounter)
         {
             killCounter.DisplayCurrentKills();
         }
@@ -440,8 +442,8 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
                 if (validIDs[i])
                 {
                     namesToSubmit[submissionCounter] = validNames[i];
-                    deathsToSubmit[submissionCounter] = Killtracker.getDeathCount(optedplayerIDs[i] - 1) - originalPlayerDeaths[i];
-                    killsToSubmit[submissionCounter] = Killtracker.getKillCount(optedplayerIDs[i] - 1) - originalPlayerKills[i];
+                    deathsToSubmit[submissionCounter] = Killtracker.getDeathCount(optedplayerIDs[i]) - originalPlayerDeaths[i];
+                    killsToSubmit[submissionCounter] = Killtracker.getKillCount(optedplayerIDs[i]) - originalPlayerKills[i];
                     submissionCounter++;
                 }
             }
@@ -484,7 +486,12 @@ public class freeForAllMatchmaker : UdonSharpBehaviour
                 }
             }
         }
-        
+        if(teleportPlayerBackToSpawn)
+        {
+            localPlayer.TeleportTo(LobbySpawn.position, LobbySpawn.rotation);
+            teleportPlayerBackToSpawn = false;
+        }
+
     }
     public void OnDeserialization()
     {
