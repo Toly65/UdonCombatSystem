@@ -26,7 +26,7 @@ Relies on https://github.com/Toly65/Udon-Stow-System
 
 Projectile weapons should contain any scripted things they are firing out within themselves in a disabled form in order to clone them for use in game, this allows them to be preconfigured. An example of something you would want to clone would be a physical bullet
 
-Hitboxes are managed locally and are pooled in the combat system prefab, any changes to a hitbox will have to be duplicated to refil the pool
+Hitboxes are managed locally and are pooled in the combat system prefab, any changes to a hitbox will have to be duplicated to refill the pool
 
 ## Features
 
