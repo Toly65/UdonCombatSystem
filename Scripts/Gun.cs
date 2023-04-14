@@ -5,25 +5,36 @@ using VRC.SDKBase;
 using VRC.Udon;
 using VRC.SDK3.Components;
 using UnityEngine.XR;
+public enum fireSelection
+{
+    Safe,
+    Semi,
+    Auto,
+    Burst
+}
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 [AddComponentMenu("")]
+
 public class Gun : UdonSharpBehaviour
 {
     [Header("general settings")]
     public bool infiniteAmmo;
-    [SerializeField]private float maxDistance;
+    [SerializeField] private float maxDistance;
     public float RaycastDamageAmount;
-    [SerializeField]private bool shotgun = false;
-    [SerializeField]private int pelletCount;
-    [SerializeField]private bool Automatic = false;
-    [SerializeField]private Transform firePosition;
-    
-    [UdonSynced]public int AmmoCount = 5;
-    
-    [SerializeField]private float BulletSpread = 10f;
+    [SerializeField] private bool shotgun = false;
+    [SerializeField] private int pelletCount;
+    [SerializeField] private Transform firePosition;
+    [UdonSynced] public int AmmoCount = 5;
+    [SerializeField] private float BulletSpread = 10f;
     [SerializeField] bool automaticReload = true;
-    
+
+    [Header("FireSelectionSettings")]
+    public fireSelection fireSelection = fireSelection.Semi;
+    public bool BaseCycleOffAnimation;
+    public float CycleTime;
+    public float BurstCycleTime;
+    public int BurstCount;
     [Header("audioSettings")]
     public AudioSource barrelAudioSource;
     public AudioSource magazineAudioSource;
@@ -36,59 +47,63 @@ public class Gun : UdonSharpBehaviour
 
     [Header("raycast settings")]
     public bool RaycastDamage = true;
-    [SerializeField]private bool RaycastBulletDrop;
-    [SerializeField]private bool desktopFaceFiring;
-    [SerializeField]private GameObject playerRaycastSpark;
-    [SerializeField]private GameObject terrainRaycastSpark;
-    [SerializeField]private LayerMask sparkable;
-    [SerializeField]private LayerMask players;
-    
+    [SerializeField] private bool RaycastBulletDrop;
+    [SerializeField] private bool desktopFaceFiring;
+    [SerializeField] private GameObject playerRaycastSpark;
+    [SerializeField] private GameObject terrainRaycastSpark;
+    [SerializeField] private LayerMask sparkable;
+    [SerializeField] private LayerMask players;
+
     [Header("Rigibody projectile, requires raycast to be off")]
     public GameObject bullet;
     public float fireVelocity = 5f;
 
     [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
-    [SerializeField]private Transform[] barrels;
-    [SerializeField]private bool fireAllBarrelsAtOnce;
-    [SerializeField]public bool ammoCountDependsOnBarrels;
+    [SerializeField] private Transform[] barrels;
+    [SerializeField] private bool fireAllBarrelsAtOnce;
+    public bool ammoCountDependsOnBarrels;
     private int currentBarrel = 0;
-    
-    
+
+
     [Header("physics stuff, only add if you're putting this on a vehicle")]
     [SerializeField] Rigidbody targetRigidbody;
-    [SerializeField]private float forceFromBarrel;
-    
+    [SerializeField] private float forceFromBarrel;
+
     [Header("haptic feedback")]
     public bool hapticFeedback;
-    [SerializeField]private float hapticFeedbackDuration = 0.1f;
-    [SerializeField]private float hapticFeedbackAmplitude = 1;
-    [SerializeField]private float hapticFeedbackFrequency = 1;
-    [SerializeField]private bool hapticFeedbackOnManualReload;
-    [SerializeField]private VRC_Pickup secondaryGripPickup;
-    [SerializeField]private VRC_Pickup pickup;
+    [SerializeField] private float hapticFeedbackDuration = 0.1f;
+    [SerializeField] private float hapticFeedbackAmplitude = 1;
+    [SerializeField] private float hapticFeedbackFrequency = 1;
+    [SerializeField] private bool hapticFeedbackOnManualReload;
+    [SerializeField] private VRC_Pickup secondaryGripPickup;
+    [SerializeField] private VRC_Pickup pickup;
+    [Header("Manipulation Settings")]
+    public bool useVirtualStock;
+    [SerializeField] private Transform stockTransform;
+    [SerializeField] private Transform rotationPointTransform;
+    [SerializeField] private float relativeVirtualStockActivationDistance;
+    [SerializeField] private Vector2 rotationRange = new Vector2(180, 180);
 
     [Header("Manual Reload")]
 
     [Header("addons")]
-    
+
     public Text Display;
     public HUDAmmoCount ammoCountHud;
 
-   
+
     [Header("animation settings")]
     public Animator GunAnimator;
     public AnimationClip CycleAnimation;
-    public bool BaseCycleOffAnimation;
-    public float CycleTime;
+
     public AnimationClip ReloadAnimation;
     public float reloadTime = 15f;
     public bool BaseReloadTimeOffAnimation;
-    public ParticleSystem ShellParticle;
-    public ParticleSystem gunShotParticle;
     public Animator magazineAnimator;
     public string MagazineAnimatorVariable = "AmmoPercentage";
     [Header("particles are visual only")]
-
+    public ParticleSystem ShellParticle;
+    public ParticleSystem gunShotParticle;
 
     [HideInInspector] public int MaxAmmo;
     private bool startTimer = false;
@@ -101,35 +116,63 @@ public class Gun : UdonSharpBehaviour
     private bool DesktopUser;
 
     private float firedTime;
-    private int MagazineAnimatorVariableHash;    
-    
+    private int MagazineAnimatorVariableHash;
+
     private string AnimName;
     private bool Firing = false;
     private bool Scoped;
     private VRC_Pickup.PickupHand hand;
-
+    [UdonSynced] private float playerHeight;
     public void TriggerPull()
     {
-        if (Automatic == true)
+        //switch case for different fire modes
+
+        if (AmmoCount > 0)
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetFireTrue");
+            switch (fireSelection)
+            {
+                case fireSelection.Safe:
+                    break;
+                case fireSelection.Semi:
+                    Fire();
+                    break;
+                case fireSelection.Auto:
+                    SetFireTrue();
+                    break;
+                case fireSelection.Burst:
+                    if (!Firing)
+                    {
+                        Firing = true;
+                        Fire();
+                    }
+                    break;
+            }
         }
         else
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Fire");
+            if (isreloadingaudio)
+            {
+                isreloadingaudio = false;
+                magazineAudioSource.PlayOneShot(GunEmpty);
+            }
         }
-    }
-    public void OnDisable()
-    {
-        AmmoCount = MaxAmmo;
     }
     public void TriggerRelease()
     {
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetFireFalse");
     }
 
+    public void OnDisable()
+    {
+        AmmoCount = MaxAmmo;
+    }
+    public void FireBurst()
+    {
+        fireSelection = fireSelection.Burst;
+    }
     public void SetFireTrue()
     {
+        fireSelection = fireSelection.Auto;
         Firing = true;
     }
 
@@ -144,7 +187,6 @@ public class Gun : UdonSharpBehaviour
         {
             if (Time.time - firedTime > CycleTime)
             {
-                firedTime = Time.time;
                 Fire();
             }
         }
@@ -158,7 +200,23 @@ public class Gun : UdonSharpBehaviour
         
 
     }
-
+    public float GetAvatarHeight(VRCPlayerApi player)
+    {
+        float height = 0;
+        Vector3 postition1 = player.GetBonePosition(HumanBodyBones.Head);
+        Vector3 postition2 = player.GetBonePosition(HumanBodyBones.Neck);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.Hips);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.RightLowerLeg);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.RightFoot);
+        height += (postition1 - postition2).magnitude;
+        return height;
+    }
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -221,7 +279,8 @@ public class Gun : UdonSharpBehaviour
         {
             hand = VRC_Pickup.PickupHand.None;
         }
-
+        playerHeight = GetAvatarHeight(localPlayer);
+        RequestSerialization();
     }
 
     public void Drop()
@@ -256,7 +315,7 @@ public class Gun : UdonSharpBehaviour
             {
                 magazineAudioSource.PlayOneShot(MagPull);
             }
-
+            
             isreloadingaudio = false;
         }
         if (currentTime < wantedTime)
@@ -318,10 +377,6 @@ public class Gun : UdonSharpBehaviour
                                 spark.SetActive(true);
                             }
                         }
-                    
-                  
-                        
-                    
                 }
                 if (Physics.Raycast(startPoint, velocity, out hit, velocity.magnitude * timeStep, sparkable))
                 {
@@ -369,7 +424,7 @@ public class Gun : UdonSharpBehaviour
                         spark.SetActive(true);
                     }
                 }
-
+                
             }
             if ((Physics.Raycast(firePosition.position, firePosition.forward, out hit, maxDistance, sparkable)))
             {
@@ -410,7 +465,7 @@ public class Gun : UdonSharpBehaviour
             }
         }
         
-        if (Time.time - firedTime < CycleTime && !Automatic)
+        if (Time.time - firedTime < CycleTime)
         {
             Debug.Log("fired too fast");
             return;
@@ -608,7 +663,14 @@ public class Gun : UdonSharpBehaviour
         //Debug.Log("Ammo Left: " + AmmoCount);
     }
 
-
+    private void HandleGunRotation()
+    {
+        float actualShoulderActivationDistance = relativeVirtualStockActivationDistance * playerHeight;
+        //check if the stocktransform is near one of the shoulders, using the tracking data for the shoulders
+        
+        
+        
+    }
 
     public void Reload()
     { 
