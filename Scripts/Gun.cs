@@ -4,104 +4,175 @@ using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.SDK3.Components;
+using UnityEngine.XR;
+public enum fireSelection
+{
+    Safe,
+    Semi,
+    Auto,
+    Burst
+}
+
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 [AddComponentMenu("")]
+
 public class Gun : UdonSharpBehaviour
 {
     [Header("general settings")]
     public bool infiniteAmmo;
-    public float maxDistance;
+    [SerializeField] private float maxDistance;
     public float RaycastDamageAmount;
-    public VRC_Pickup pickup;
-    public bool shotgun = false;
-    public int pelletCount;
-    public bool Automatic = false;
-    public Transform firePosition;
-    public float fireVelocity = 5f;
+    [SerializeField] private bool shotgun = false;
+    [SerializeField] private int pelletCount;
+    [SerializeField] private Transform firePosition;
     [UdonSynced] public int AmmoCount = 5;
-    
-    public float BulletSpread = 10f;
-    public bool automaticReload = true;
-    [Tooltip("gunshot, magpull, maginsert, gun cock")]
-    public AudioClip[] clips = new AudioClip[4];
+    [SerializeField] private float BulletSpread = 10f;
+    [SerializeField] bool automaticReload = true;
+
+    [Header("FireSelectionSettings")]
+    public fireSelection fireSelection = fireSelection.Semi;
+    public bool BaseCycleOffAnimation;
+    public float CycleTime;
+    public float BurstCycleTime;
+    public int BurstCount;
+    [Header("audioSettings")]
+    public AudioSource barrelAudioSource;
+    public AudioSource magazineAudioSource;
+    public AudioSource fireMechanismAudioSource;
+    [SerializeField] private AudioClip gunShot;
+    [SerializeField] private AudioClip MagPull;
+    [SerializeField] private AudioClip MagInsert;
+    [SerializeField] private AudioClip GunCock;
+    [SerializeField] private AudioClip GunEmpty;
+
     [Header("raycast settings")]
     public bool RaycastDamage = true;
-    public bool RaycastBulletDrop;
-    public bool desktopFaceFiring;
-    public GameObject playerRaycastSpark;
-    public GameObject terrainRaycastSpark;
-    public LayerMask sparkable;
-    public LayerMask players;
-    [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
-    public Transform[] barrels;
-    public bool fireAllBarrelsAtOnce;
-    public bool ammoCountDependsOnBarrels;
-    private int currentBarrel = 0;
+    [SerializeField] private bool RaycastBulletDrop;
+    [SerializeField] private bool desktopFaceFiring;
+    [SerializeField] private GameObject playerRaycastSpark;
+    [SerializeField] private GameObject terrainRaycastSpark;
+    [SerializeField] private LayerMask sparkable;
+    [SerializeField] private LayerMask players;
+
     [Header("Rigibody projectile, requires raycast to be off")]
     public GameObject bullet;
+    public float fireVelocity = 5f;
+
+    [Header("multi-barrel settings, if the script detects multiple barrels it will use them")]
+    [SerializeField] private Transform[] barrels;
+    [SerializeField] private bool fireAllBarrelsAtOnce;
+    public bool ammoCountDependsOnBarrels;
+    private int currentBarrel = 0;
+
+
     [Header("physics stuff, only add if you're putting this on a vehicle")]
-    public Rigidbody targetRigidbody;
-    public float forceFromBarrel;
+    [SerializeField] Rigidbody targetRigidbody;
+    [SerializeField] private float forceFromBarrel;
+
+    [Header("haptic feedback")]
+    public bool hapticFeedback;
+    [SerializeField] private float hapticFeedbackDuration = 0.1f;
+    [SerializeField] private float hapticFeedbackAmplitude = 1;
+    [SerializeField] private float hapticFeedbackFrequency = 1;
+    [SerializeField] private bool hapticFeedbackOnManualReload;
+    [SerializeField] private VRC_Pickup secondaryGripPickup;
+    [SerializeField] private VRC_Pickup pickup;
+    [Header("Manipulation Settings")]
+    public bool useVirtualStock;
+    [SerializeField] private Transform stockTransform;
+    [SerializeField] private Transform rotationPointTransform;
+    [SerializeField] private float relativeVirtualStockActivationDistance;
+    [SerializeField] private Vector2 rotationRange = new Vector2(180, 180);
+
+    [Header("Manual Reload")]
+
     [Header("addons")]
-    
+
     public Text Display;
-    public GameObject secondGrip;
     public HUDAmmoCount ammoCountHud;
 
-    [HideInInspector]public int MaxAmmo;
+
+    [Header("animation settings")]
+    public Animator GunAnimator;
+    public AnimationClip CycleAnimation;
+
+    public AnimationClip ReloadAnimation;
+    public float reloadTime = 15f;
+    public bool BaseReloadTimeOffAnimation;
+    public Animator magazineAnimator;
+    public string MagazineAnimatorVariable = "AmmoPercentage";
+    [Header("particles are visual only")]
+    public ParticleSystem ShellParticle;
+    public ParticleSystem gunShotParticle;
+
+    [HideInInspector] public int MaxAmmo;
     private bool startTimer = false;
     private float currentTime;
     private float wantedTime;
     [HideInInspector] public bool AmmoCheck = true;
-    public AudioSource audio;
+
     private bool isreloadingaudio = true;
     private VRCPlayerApi localPlayer;
     private bool DesktopUser;
-    // [UdonSynced]private VRCPlayerApi owner;
-    [Header("animation settings")]
-    public Animator GunAnimator;
-    public AnimationClip CycleAnimation;
-    public bool BaseCycleOffAnimation;
-    public float CycleTime;
-    public AnimationClip ReloadAnimation;
-    public float reloadTime = 15f;
-    public bool BaseReloadTimeOffAnimation;
-    public ParticleSystem ShellParticle;
-    public ParticleSystem gunShotParticle;
-    public Animator magazineAnimator;
-    public string MagazineAnimatorVariable = "AmmoPercentage";
-    [Header("particles are visual only")]
-    
 
     private float firedTime;
-    private int MagazineAnimatorVariableHash;    
-    
+    private int MagazineAnimatorVariableHash;
+
     private string AnimName;
     private bool Firing = false;
     private bool Scoped;
-
+    private VRC_Pickup.PickupHand hand;
+    [UdonSynced] private float playerHeight;
     public void TriggerPull()
     {
-        if (Automatic == true)
+        //switch case for different fire modes
+
+        if (AmmoCount > 0)
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetFireTrue");
+            switch (fireSelection)
+            {
+                case fireSelection.Safe:
+                    break;
+                case fireSelection.Semi:
+                    Fire();
+                    break;
+                case fireSelection.Auto:
+                    SetFireTrue();
+                    break;
+                case fireSelection.Burst:
+                    if (!Firing)
+                    {
+                        Firing = true;
+                        Fire();
+                    }
+                    break;
+            }
         }
         else
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Fire");
+            if (isreloadingaudio)
+            {
+                isreloadingaudio = false;
+                magazineAudioSource.PlayOneShot(GunEmpty);
+            }
         }
-    }
-    public void OnDisable()
-    {
-        AmmoCount = MaxAmmo;
     }
     public void TriggerRelease()
     {
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetFireFalse");
     }
 
+    public void OnDisable()
+    {
+        AmmoCount = MaxAmmo;
+    }
+    public void FireBurst()
+    {
+        fireSelection = fireSelection.Burst;
+    }
     public void SetFireTrue()
     {
+        fireSelection = fireSelection.Auto;
         Firing = true;
     }
 
@@ -116,7 +187,6 @@ public class Gun : UdonSharpBehaviour
         {
             if (Time.time - firedTime > CycleTime)
             {
-                firedTime = Time.time;
                 Fire();
             }
         }
@@ -130,7 +200,23 @@ public class Gun : UdonSharpBehaviour
         
 
     }
-
+    public float GetAvatarHeight(VRCPlayerApi player)
+    {
+        float height = 0;
+        Vector3 postition1 = player.GetBonePosition(HumanBodyBones.Head);
+        Vector3 postition2 = player.GetBonePosition(HumanBodyBones.Neck);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.Hips);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.RightLowerLeg);
+        height += (postition1 - postition2).magnitude;
+        postition1 = postition2;
+        postition2 = player.GetBonePosition(HumanBodyBones.RightFoot);
+        height += (postition1 - postition2).magnitude;
+        return height;
+    }
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -165,26 +251,43 @@ public class Gun : UdonSharpBehaviour
         {
             reloadTime = ReloadAnimation.length;
         }
+        if(secondaryGripPickup)
+        {
+            secondaryGripPickup.pickupable = false;
+        }
     }
     public void Pickup()
     {
         //owner = localPlayer;
         
-        if(secondGrip != null)
+        if(secondaryGripPickup != null)
         {
-            secondGrip.SetActive(true);
+            secondaryGripPickup.pickupable = true;
         }
-        if(ammoCountHud)
+        //find which hand the current pickup is in
+        if (!pickup)
+            return;
+        if (localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Left) == pickup)
         {
-
+            hand = VRC_Pickup.PickupHand.Left;
         }
+        else if (localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Right) == pickup)
+        {
+            hand = VRC_Pickup.PickupHand.Right;
+        }
+        else
+        {
+            hand = VRC_Pickup.PickupHand.None;
+        }
+        playerHeight = GetAvatarHeight(localPlayer);
+        RequestSerialization();
     }
 
     public void Drop()
     {
-        if(secondGrip!= null)
+        if(secondaryGripPickup != null)
         {
-            secondGrip.SetActive(false);
+            secondaryGripPickup.pickupable = false;
         }
         RequestSerialization();
     }
@@ -203,13 +306,16 @@ public class Gun : UdonSharpBehaviour
         }
 
         if (!startTimer) return;
+
+        //TODO check if automatic reload
+        
         if (currentTime > wantedTime - 0.7 && isreloadingaudio)
         {
-            if (clips[2] != null&& audio)
+            if (MagPull != null && magazineAudioSource)
             {
-                audio.PlayOneShot(clips[2]);
+                magazineAudioSource.PlayOneShot(MagPull);
             }
-
+            
             isreloadingaudio = false;
         }
         if (currentTime < wantedTime)
@@ -221,9 +327,9 @@ public class Gun : UdonSharpBehaviour
             startTimer = false;
             AmmoCount = MaxAmmo;
             AmmoCheck = true;
-            if (clips[3] != null&& audio)
+            if (MagInsert != null&& magazineAudioSource)
             {
-                audio.PlayOneShot(clips[3]);
+                magazineAudioSource.PlayOneShot(MagInsert);
             }
 
             isreloadingaudio = true;
@@ -271,10 +377,6 @@ public class Gun : UdonSharpBehaviour
                                 spark.SetActive(true);
                             }
                         }
-                    
-                  
-                        
-                    
                 }
                 if (Physics.Raycast(startPoint, velocity, out hit, velocity.magnitude * timeStep, sparkable))
                 {
@@ -322,7 +424,7 @@ public class Gun : UdonSharpBehaviour
                         spark.SetActive(true);
                     }
                 }
-
+                
             }
             if ((Physics.Raycast(firePosition.position, firePosition.forward, out hit, maxDistance, sparkable)))
             {
@@ -347,6 +449,7 @@ public class Gun : UdonSharpBehaviour
     }
     public void Fire()
     {
+       
         if(barrels.Length!=0)
         {
             firePosition.position = barrels[currentBarrel].position;
@@ -362,7 +465,7 @@ public class Gun : UdonSharpBehaviour
             }
         }
         
-        if (Time.time - firedTime < CycleTime && !Automatic)
+        if (Time.time - firedTime < CycleTime)
         {
             Debug.Log("fired too fast");
             return;
@@ -378,7 +481,25 @@ public class Gun : UdonSharpBehaviour
         }
         if (AmmoCount > 0)
         {
-
+            if (hapticFeedback && pickup && Networking.LocalPlayer == Networking.GetOwner(gameObject))
+            {
+                Networking.LocalPlayer.PlayHapticEventInHand(hand, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                if(secondaryGripPickup)
+                {
+                    if(secondaryGripPickup.IsHeld)
+                    {
+                        //get the opposite hand to play a haptic event
+                        if(hand == VRC_Pickup.PickupHand.Left)
+                        {
+                            Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                        }
+                        else
+                        {
+                            Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, hapticFeedbackDuration, hapticFeedbackAmplitude, hapticFeedbackFrequency);
+                        }
+                    }
+                }
+            }
             if (targetRigidbody && localPlayer == Networking.GetOwner(targetRigidbody.gameObject))
             {
                 targetRigidbody.AddForceAtPosition((-firePosition.forward) * forceFromBarrel, firePosition.position);
@@ -413,10 +534,11 @@ public class Gun : UdonSharpBehaviour
                     }
 
                     AmmoCount--;
-                    if (clips[0] != null&&audio)
+                    if (gunShot != null && barrelAudioSource)
                     {
-                        audio.PlayOneShot(clips[0]);
+                        barrelAudioSource.PlayOneShot(gunShot);
                     }
+                    
 
                     if (ShellParticle != null)
                     {
@@ -443,9 +565,9 @@ public class Gun : UdonSharpBehaviour
                     }
 
                     AmmoCount--;
-                    if (clips[0] != null&&audio)
+                    if (gunShot != null && barrelAudioSource)
                     {
-                        audio.PlayOneShot(clips[0]);
+                        barrelAudioSource.PlayOneShot(gunShot);
                     }
 
                     if (ShellParticle != null)
@@ -494,10 +616,10 @@ public class Gun : UdonSharpBehaviour
                     }
 
                     AmmoCount--;
-                    if (clips[0] != null && audio)
+                    if (gunShot != null && barrelAudioSource)
                     {
-                        audio.PlayOneShot(clips[0]);
-                    }
+                        barrelAudioSource.PlayOneShot(gunShot);
+                    }   
 
                     if (ShellParticle!=null)
                     {
@@ -526,10 +648,10 @@ public class Gun : UdonSharpBehaviour
                     }
 
                     AmmoCount--;
-                    if (clips[0] != null && audio)
+                    if (gunShot != null && barrelAudioSource)
                     {
-                        audio.PlayOneShot(clips[0]);
-                    }
+                        barrelAudioSource.PlayOneShot(gunShot);
+                    }                
 
                     if (ShellParticle!=null)
                     {
@@ -541,7 +663,14 @@ public class Gun : UdonSharpBehaviour
         //Debug.Log("Ammo Left: " + AmmoCount);
     }
 
-
+    private void HandleGunRotation()
+    {
+        float actualShoulderActivationDistance = relativeVirtualStockActivationDistance * playerHeight;
+        //check if the stocktransform is near one of the shoulders, using the tracking data for the shoulders
+        
+        
+        
+    }
 
     public void Reload()
     { 
@@ -550,10 +679,11 @@ public class Gun : UdonSharpBehaviour
             Display.text = "Reloading";
         }
 
-        if (clips[1] != null && audio)
+        if (MagPull != null && magazineAudioSource)
         {
-            audio.PlayOneShot(clips[1]);
+            magazineAudioSource.PlayOneShot(MagPull);
         }
+        
 
         if(ReloadAnimation&&GunAnimator)
         {

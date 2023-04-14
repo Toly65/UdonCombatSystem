@@ -37,8 +37,9 @@ public class killTracker : UdonSharpBehaviour
         int killerID = GetKillerID(playerID);
         if (!(killerID < 0))
         {
-            return kills[GetKillerID(playerID)];
+            return kills[killerID];
         }
+        Debug.Log("playerID not found in killTracker");
         return 0; 
     }
     public int getDeathCount(int playerID)
@@ -57,7 +58,6 @@ public class killTracker : UdonSharpBehaviour
     }
     public void addkill(int KillingPlayer)
     {
-        KillingPlayer++;
         Debug.Log("adding kill");
         int localplayerKillerID = GetKillerID(localplayer.playerId);
         int killingPlayerID = GetKillerID(KillingPlayer);

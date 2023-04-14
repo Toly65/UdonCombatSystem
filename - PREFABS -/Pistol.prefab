@@ -36,7 +36,7 @@ Transform:
   m_LocalScale: {x: 0.05, y: 0.05, z: 0.05}
   m_Children: []
   m_Father: {fileID: 619873773119995556}
-  m_RootOrder: 2
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &5583379378917437974
 MeshFilter:
@@ -235,7 +235,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 2433773685804252722}
-  m_RootOrder: 1
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 270, y: 270, z: 0}
 --- !u!1 &2918951923742153194
 GameObject:
@@ -265,7 +265,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 2433773685804252722}
-  m_RootOrder: 3
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3115725747373069776
 GameObject:
@@ -647,7 +647,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
-  m_Father: {fileID: 619873773119995556}
+  m_Father: {fileID: 2433773685804252722}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!82 &5853730375895687626
@@ -666,7 +666,7 @@ AudioSource:
   m_Pitch: 1
   Loop: 0
   Mute: 0
-  Spatialize: 0
+  Spatialize: 1
   SpatializePostEffects: 0
   Priority: 128
   DopplerLevel: 1
@@ -1099,10 +1099,9 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 2511086251740996729}
-  - {fileID: 8420039376781915029}
   - {fileID: 58811987786257956}
   m_Father: {fileID: 2433773685804252722}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6586870554874496438
 GameObject:
@@ -1139,6 +1138,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4525053086662475878}
+  - {fileID: 8420039376781915029}
   - {fileID: 7113886697985518127}
   - {fileID: 619873773119995556}
   - {fileID: 7675304827897739833}
@@ -1350,21 +1350,25 @@ MonoBehaviour:
   infiniteAmmo: 0
   maxDistance: 500
   RaycastDamageAmount: 5
-  pickup: {fileID: 7286043446028734940}
   shotgun: 0
   pelletCount: 5
-  Automatic: 0
   firePosition: {fileID: 6583597998584336898}
-  fireVelocity: 100
   AmmoCount: 8
-  reloadTime: 3
   BulletSpread: 1
   automaticReload: 1
-  clips:
-  - {fileID: 8300000, guid: e3663c524fffb39448e0039a4275fa22, type: 3}
-  - {fileID: 0}
-  - {fileID: 8300000, guid: 75673a11f897e9440912237daa61cb88, type: 3}
-  - {fileID: 8300000, guid: aef48d75be1b00a4882cede8ce5ccdca, type: 3}
+  fireSelection: 1
+  BaseCycleOffAnimation: 1
+  CycleTime: 0.3
+  BurstCycleTime: 0
+  BurstCount: 0
+  barrelAudioSource: {fileID: 5853730375895687626}
+  magazineAudioSource: {fileID: 5853730375895687626}
+  fireMechanismAudioSource: {fileID: 5853730375895687626}
+  gunShot: {fileID: 8300000, guid: e3663c524fffb39448e0039a4275fa22, type: 3}
+  MagPull: {fileID: 8300000, guid: 877625d5ca9b541468a4f181bfc309f3, type: 3}
+  MagInsert: {fileID: 8300000, guid: 75673a11f897e9440912237daa61cb88, type: 3}
+  GunCock: {fileID: 8300000, guid: aef48d75be1b00a4882cede8ce5ccdca, type: 3}
+  GunEmpty: {fileID: 0}
   RaycastDamage: 1
   RaycastBulletDrop: 0
   desktopFaceFiring: 1
@@ -1378,21 +1382,37 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   bullet: {fileID: 0}
+  fireVelocity: 100
+  barrels: []
+  fireAllBarrelsAtOnce: 0
+  ammoCountDependsOnBarrels: 0
   targetRigidbody: {fileID: 0}
   forceFromBarrel: 0
+  hapticFeedback: 0
+  hapticFeedbackDuration: 0.1
+  hapticFeedbackAmplitude: 1
+  hapticFeedbackFrequency: 1
+  hapticFeedbackOnManualReload: 0
+  secondaryGripPickup: {fileID: 0}
+  pickup: {fileID: 7286043446028734940}
+  useVirtualStock: 0
+  stockTransform: {fileID: 0}
+  rotationPointTransform: {fileID: 0}
+  relativeVirtualStockActivationDistance: 0
+  rotationRange: {x: 180, y: 180}
   Display: {fileID: 2603609282829296179}
-  secondGrip: {fileID: 0}
   ammoCountHud: {fileID: 0}
-  MaxAmmo: 0
-  AmmoCheck: 1
-  audio: {fileID: 5853730375895687626}
   GunAnimator: {fileID: 3399561053264204547}
   CycleAnimation: {fileID: 7400000, guid: 38094fec329aab14dbdc1ef0d53e41c0, type: 2}
   ReloadAnimation: {fileID: 0}
+  reloadTime: 3
+  BaseReloadTimeOffAnimation: 0
+  magazineAnimator: {fileID: 0}
+  MagazineAnimatorVariable: AmmoPercentage
   ShellParticle: {fileID: 2727196873397172340}
   gunShotParticle: {fileID: 0}
-  BaseCycleOffAnimation: 1
-  CycleTime: 0.3
+  MaxAmmo: 0
+  AmmoCheck: 1
 --- !u!114 &2372054184086409405
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1681,15 +1701,15 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 892aaaf07c74d6745a0e4255844503a9, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2174359a25780464382213afd9e59913, type: 3}
---- !u!4 &4759333826653333879 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 7463646184435167883, guid: 2174359a25780464382213afd9e59913,
-    type: 3}
-  m_PrefabInstance: {fileID: 2709124422800317436}
-  m_PrefabAsset: {fileID: 0}
 --- !u!198 &2727196873397172340 stripped
 ParticleSystem:
   m_CorrespondingSourceObject: {fileID: 18099423800058760, guid: 2174359a25780464382213afd9e59913,
+    type: 3}
+  m_PrefabInstance: {fileID: 2709124422800317436}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4759333826653333879 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7463646184435167883, guid: 2174359a25780464382213afd9e59913,
     type: 3}
   m_PrefabInstance: {fileID: 2709124422800317436}
   m_PrefabAsset: {fileID: 0}
