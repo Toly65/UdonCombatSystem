@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: MagazinePouch
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 5d2d8b4ead684624f9e3977635da245f,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 597593702c7b20a4e9e09fbda21676d6,
     type: 2}
   udonAssembly: 
   assemblyError: 

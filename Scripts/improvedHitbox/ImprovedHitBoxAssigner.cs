@@ -3,11 +3,20 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+using UdonSharpEditor;
+using UnityEditor;
+using System.Collections.Generic;
+#endif
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class ImprovedHitBoxAssigner : UdonSharpBehaviour
 {
+    public GameObject hitboxPrefab;
+    public int maxHitboxCount;
     private VRCPlayerApi[] players = new VRCPlayerApi[80];
-    public ImprovedHitBoxManager[] hitboxArray;
+    [HideInInspector] public ImprovedHitBoxManager[] hitboxArray;
     //hitbox assignment stuff
 
     int[] InsertionSort(int[] inputArray)
@@ -102,3 +111,39 @@ public class ImprovedHitBoxAssigner : UdonSharpBehaviour
         //assignHitboxes();
     }
 }
+
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+//custom editor
+[CustomEditor(typeof(ImprovedHitBoxAssigner))]
+
+public class ImprovedHitBoxAssignerEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        //default inspector
+        DrawDefaultInspector();
+        //custom inspector
+        ImprovedHitBoxAssigner hitboxAssigner = (ImprovedHitBoxAssigner)target;
+        if (GUILayout.Button("Generate Hitboxes"))
+        {
+            //clear the array
+            hitboxAssigner.hitboxArray = new ImprovedHitBoxManager[hitboxAssigner.maxHitboxCount];
+            //DestroyChildren
+            List<GameObject> children = new List<GameObject>();
+            foreach (Transform child in hitboxAssigner.transform) children.Add(child.gameObject);
+            children.ForEach(child => DestroyImmediate(child));
+
+            //generate the hitboxes
+            for (int i = 0; i < hitboxAssigner.maxHitboxCount; i++)
+            {
+                GameObject newHitbox = Instantiate(hitboxAssigner.hitboxPrefab, hitboxAssigner.transform);
+                newHitbox.name = "Hitbox " + i;
+                hitboxAssigner.hitboxArray[i] = newHitbox.GetComponent<ImprovedHitBoxManager>();
+            }
+        }
+        
+    }
+}
+
+#endif

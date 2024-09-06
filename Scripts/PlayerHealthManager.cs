@@ -51,6 +51,13 @@ public class PlayerHealthManager : UdonSharpBehaviour
 
         //localPLayer.CombatSetMaxHitpoints(CurrentHealth);
         //localPLayer.CombatSetCurrentHitpoints(CurrentHealth);
+
+        //record the starting states of the objects
+        optToggleObjectsStates = new bool[optToggledObjects.Length];
+        for (int i = 0; i < optToggledObjects.Length; i++)
+        {
+            optToggleObjectsStates[i] = optToggledObjects[i].activeSelf;
+        }
     }
 
     public void SetOptState(bool state)
@@ -58,11 +65,19 @@ public class PlayerHealthManager : UdonSharpBehaviour
         optState = state;
         if(state)
         {
-
+            //toggle the objects
+            for (int i = 0; i < optToggledObjects.Length; i++)
+            {
+                optToggledObjects[i].SetActive(optToggleObjectsStates[i]);
+            }
         }
         else
         {
-
+            //toggle the objects
+            for (int i = 0; i < optToggledObjects.Length; i++)
+            {
+                optToggledObjects[i].SetActive(!optToggleObjectsStates[i]);
+            }
         }
     }
     public bool GetOptState()
@@ -79,6 +94,7 @@ public class PlayerHealthManager : UdonSharpBehaviour
             {
                 //MAKE BEHAVIOUR STUFF HAPPEN
                 OnDamageBehaviour.SendCustomEvent(DamageFunction);
+                OnDamageBehaviour.SetProgramVariable(DamageInputVariable, Damage);
             }
             else
             {

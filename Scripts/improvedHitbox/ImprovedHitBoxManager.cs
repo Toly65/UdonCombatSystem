@@ -35,7 +35,7 @@ public class ImprovedHitBoxManager : UdonSharpBehaviour
         }
     }
 
-    //damage application stuff
+    //damage application stuffD
     private void Start()
     {
         localplayer = Networking.LocalPlayer;

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: DespawnOnDrop
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 87ddb867bf86178469d76201a3e6e97b,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 7c3a6e7640512594694dca54b548cad6,
     type: 2}
   udonAssembly: 
   assemblyError: 

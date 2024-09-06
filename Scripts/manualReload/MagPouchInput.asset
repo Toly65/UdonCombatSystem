@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: MagPouchInput
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 738adb5d65485264a832f2c60f7f79c5,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 1c6794126e37ae946b3689a4b75e8e88,
     type: 2}
   udonAssembly: 
   assemblyError: 

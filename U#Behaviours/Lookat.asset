@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: Lookat
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: c107d89e7d61c3b4dbc55ffc68dc93b3,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 74c2303b64be0fe47a6d54cfe22be972,
     type: 2}
   udonAssembly: 
   assemblyError: 

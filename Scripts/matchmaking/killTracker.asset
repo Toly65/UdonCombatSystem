@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: killTracker
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 71ba6230ad298c1499128e6ade5309c4,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 9a211a167fae2d940865409c4b527938,
     type: 2}
   udonAssembly: 
   assemblyError: 

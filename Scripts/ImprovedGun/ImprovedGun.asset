@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: ImprovedGun
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: c554e235d2cfee64fa988da1d7124e38,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: c2817447b96749d44a455b4a1afa92bb,
     type: 2}
   udonAssembly: 
   assemblyError: 

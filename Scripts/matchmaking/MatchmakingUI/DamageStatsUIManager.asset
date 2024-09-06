@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: DamageStatsUIManager
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: a88906b8d22a77442b7118021c5b9601,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 6cb045db282bc114b9a0406f56ad97f1,
     type: 2}
   udonAssembly: 
   assemblyError: 
