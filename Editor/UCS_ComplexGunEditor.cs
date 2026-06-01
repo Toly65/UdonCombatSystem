@@ -10,22 +10,30 @@ public class UCS_ComplexGunEditor : Editor
     private SerializedProperty gunPickupProp;
     private SerializedProperty desktopReloadCompatibilityProp;
     private SerializedProperty desktopReloadKeyProp;
+    private SerializedProperty sliderHandlerProp;
     private SerializedProperty magSocketProp;
     private SerializedProperty requiredMagPoolProp;
     private SerializedProperty magBeltProp;
+    private SerializedProperty desktopSlideAnimDurationProp;
+    private SerializedProperty desktopMagEjectDurationProp;
+    private SerializedProperty magazineVisualRootProp;
     private SerializedProperty magazinePickupAnchorProp;
-    private SerializedProperty prefillFromInventoryProp;
 
     void OnEnable()
     {
         baseEditor = CreateEditor(target, typeof(UCS_BaseGunEditor));
         slidePhysBoneProp = serializedObject.FindProperty("slidePhysBone");
         gunPickupProp = serializedObject.FindProperty("gunPickup");
+        desktopReloadCompatibilityProp = serializedObject.FindProperty("desktopReloadCompatibility");
+        desktopReloadKeyProp = serializedObject.FindProperty("desktopReloadKey");
+        sliderHandlerProp = serializedObject.FindProperty("sliderHandler");
         magSocketProp = serializedObject.FindProperty("magSocket");
         requiredMagPoolProp = serializedObject.FindProperty("requiredMagPool");
         magBeltProp = serializedObject.FindProperty("magBelt");
+        desktopSlideAnimDurationProp = serializedObject.FindProperty("desktopSlideAnimDuration");
+        desktopMagEjectDurationProp = serializedObject.FindProperty("desktopMagEjectDuration");
+        magazineVisualRootProp = serializedObject.FindProperty("magazineVisualRoot");
         magazinePickupAnchorProp = serializedObject.FindProperty("magazinePickupAnchor");
-        prefillFromInventoryProp = serializedObject.FindProperty("prefillFromInventory");
     }
 
     void OnDisable()
@@ -54,9 +62,12 @@ public class UCS_ComplexGunEditor : Editor
         EditorGUILayout.PropertyField(magSocketProp, new GUIContent("Mag Socket", "Socket controller used to refresh the socketed magazine pickup state when the gun is picked up or dropped."));
         EditorGUILayout.PropertyField(magBeltProp, new GUIContent("Mag Belt", "Reference to the player's mag belt used to request magazines at runtime."));
         EditorGUILayout.PropertyField(slidePhysBoneProp, new GUIContent("Slide PhysBone"));
+        EditorGUILayout.PropertyField(sliderHandlerProp, new GUIContent("Slider Handler", "Controls the local slide animation when the slide is simulated during reload handling."));
         EditorGUILayout.PropertyField(requiredMagPoolProp, new GUIContent("Required Mag Pool"));
+        EditorGUILayout.PropertyField(desktopSlideAnimDurationProp, new GUIContent("Desktop Slide Anim Duration", "How long the local slide animation takes during the desktop reload path."));
+        EditorGUILayout.PropertyField(desktopMagEjectDurationProp, new GUIContent("Desktop Mag Eject Duration", "Delay used before the desktop reload path ejects the magazine."));
+        EditorGUILayout.PropertyField(magazineVisualRootProp, new GUIContent("Magazine Visual Root", "Optional visual root for the inserted magazine that can be toggled independently of the socket state."));
         EditorGUILayout.PropertyField(magazinePickupAnchorProp, new GUIContent("Magazine Pickup Anchor", "Transform used to position the magazine pickup while socketed (where players will grab it)."));
-        EditorGUILayout.PropertyField(prefillFromInventoryProp, new GUIContent("Prefill From Inventory", "If enabled the gun will try to fill the socketed magazine from the assigned MagPool's Ammo Inventory when the gun is enabled. Otherwise it spawns a full mag."));
         serializedObject.ApplyModifiedProperties();
     }
 }

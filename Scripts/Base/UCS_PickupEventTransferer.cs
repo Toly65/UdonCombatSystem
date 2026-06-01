@@ -7,6 +7,7 @@ using VRC.Udon;
 public class UCS_PickupEventTransferer : UdonSharpBehaviour
 {
     public UdonBehaviour targetBehaviour;
+    public UCS_TwoHandedManager twoHandedManager;
     public string pickupUseDownEvent = "TriggerPull";
     public string pickupUseUpEvent = "TriggerRelease";
     public string pickupDropEvent = "Drop";
@@ -24,25 +25,29 @@ public class UCS_PickupEventTransferer : UdonSharpBehaviour
             pickup.AutoHold = VRC_Pickup.AutoHoldMode.Yes;
         }
     }
-    public void OnPickupUseDown()
+    public override void OnPickupUseDown()
     {
         targetBehaviour.SendCustomEvent(pickupUseDownEvent);
     }
 
-    public void OnPickupUseUp()
+    public override void OnPickupUseUp()
     {
         targetBehaviour.SendCustomEvent(pickupUseUpEvent);
     }
 
-    public void OnDrop()
+    public override void OnDrop()
     {
         targetBehaviour.SendCustomEvent(pickupDropEvent);
+        if (twoHandedManager != null)
+            twoHandedManager.PrimaryDrop();
         pickup.pickupable = true;
     }
-    public void OnPickup()
+    public override void OnPickup()
     {
         Networking.SetOwner(Networking.LocalPlayer, targetBehaviour.gameObject);
         targetBehaviour.SendCustomEvent(pickupEvent);
+        if (twoHandedManager != null)
+            twoHandedManager.PrimaryPickup();
         pickup.pickupable = false; // we do this so that the player can't pickup the pickup from their own hand, which causes issues with the gun interactions.
     }
 }
