@@ -75,9 +75,21 @@ public class UCS_MagBelt : UdonSharpBehaviour
             return;
         }
 
-        if (currentPreviewMagData.IsHeld() || currentPreviewMagData.IsSocketed())
-         {
+        if (currentPreviewMagData.IsHeld())
+        {
             return;
+        }
+
+        // Preview mags should never stay socketed. If stale sync toggles socketed/hidden
+        // state (often on first acquire), force preview state back before alignment.
+        if (currentPreviewMagData.IsSocketed())
+        {
+            currentPreviewMagData.ClearSocket();
+            currentPreviewMagData.SetSocketed(false);
+            currentPreviewMagData.SetHeld(false);
+            currentPreviewMagData.SetWorldVisible(true);
+            currentPreviewMagData.SetPickupUseGravity(false);
+            currentPreviewMagData.SetPickupKinematic(true);
         }
 
         Transform pickupRoot = currentPreviewMagData.GetPickupRootTransform();
@@ -194,7 +206,11 @@ public class UCS_MagBelt : UdonSharpBehaviour
         currentPreviewMagData = TryGetMagData(currentPreviewMag);
         if (currentPreviewMagData != null)
         {
+            // Ensure a reused pooled mag cannot keep stale socket state when used as a belt preview.
+            currentPreviewMagData.ClearSocket();
+            currentPreviewMagData.SetInUse(true);
             currentPreviewMagData.SetSourceBelt(this);
+            currentPreviewMagData.ClearReturnToPool();
 
             Transform pickupRoot = currentPreviewMagData.GetPickupRootTransform();
             if (pickupRoot != null && MagazineHolsterPoint != null)
@@ -209,6 +225,7 @@ public class UCS_MagBelt : UdonSharpBehaviour
         {
             currentPreviewMagData.SetHeld(false);
             currentPreviewMagData.SetSocketed(false);
+            currentPreviewMagData.SetWorldVisible(true);
             currentPreviewMagData.SetPickupRootActive(true);
             currentPreviewMagData.SetPickupVisualVisible(true);
         }

@@ -49,7 +49,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         CacheMagPickupAnchor();
 
         bool localOwnsGun = gun != null && Networking.IsOwner(gun.gameObject);
-        bool useMagBelt = localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
+        bool useMagBelt = gunIsHeld && localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
         bool hasSyncedMag = gun != null && gun.GetInsertedMagId() >= 0;
 
         if (useMagBelt)
@@ -75,7 +75,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         CacheMagPickupAnchor();
 
         bool localOwnsGun = gun != null && Networking.IsOwner(gun.gameObject);
-        bool useMagBelt = localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
+        bool useMagBelt = gunIsHeld && localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
         bool hasSyncedMag = gun != null && gun.GetInsertedMagId() >= 0;
 
         if (useMagBelt)

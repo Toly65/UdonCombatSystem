@@ -239,11 +239,8 @@ public class UCS_ComplexGun : UCS_BaseGun
 
         if (magSocket != null)
         {
+            magSocket.RefreshSocketedMagFromGunState();
             magSocket.TryReattachSocketedMag();
-            if (IsPickupOwner())
-            {
-                magSocket.PerformDelayedPreInsert();
-            }
             magSocket.RefreshSocketedMagPickupState();
             magSocket.SetSocketedMagGunHeld(true);
         }

@@ -249,6 +249,11 @@ public class UCS_BaseGun : UdonSharpBehaviour
     private bool isAutoFiring = false;//no need to sync this since they are called via network events
     public void StartAuto()
     {
+        if (isAutoFiring)
+        {
+            return;
+        }
+
         isAutoFiring = true;
         FireAuto();
     }

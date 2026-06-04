@@ -141,7 +141,7 @@ public class UCS_Mag : UdonSharpBehaviour
         if (lastLoggedMagState != messageKey)
         {
             lastLoggedMagState = messageKey;
-            Debug.Log($"[UCS_Mag] OnDeserialization magId={magId} ownerId={ownerId} syncedSocketed={syncedSocketed} syncedPickupRootActive={syncedPickupRootActive} syncedPickupVisualActive={syncedPickupVisualActive} magPickupRootActive={pickupRootActive} magPickupVisualActive={pickupVisualActive} isSocketed={isSocketed}");
+            //Debug.Log($"[UCS_Mag] OnDeserialization magId={magId} ownerId={ownerId} syncedSocketed={syncedSocketed} syncedPickupRootActive={syncedPickupRootActive} syncedPickupVisualActive={syncedPickupVisualActive} magPickupRootActive={pickupRootActive} magPickupVisualActive={pickupVisualActive} isSocketed={isSocketed}");
         }
     }
 
@@ -292,7 +292,7 @@ public class UCS_Mag : UdonSharpBehaviour
         if (lastLoggedMagState != messageKey)
         {
             lastLoggedMagState = messageKey;
-            Debug.Log($"[UCS_Mag] SetPickupRootActive magId={magId} active={active} owner={ownerId}");
+            //Debug.Log($"[UCS_Mag] SetPickupRootActive magId={magId} active={active} owner={ownerId}");
         }
     }
 
@@ -380,7 +380,7 @@ public class UCS_Mag : UdonSharpBehaviour
         if (lastLoggedMagState != messageKey)
         {
             lastLoggedMagState = messageKey;
-            Debug.Log($"[UCS_Mag] SetPickupVisualVisible magId={magId} visible={visible} owner={ownerId}");
+            //Debug.Log($"[UCS_Mag] SetPickupVisualVisible magId={magId} visible={visible} owner={ownerId}");
         }
     }
 
@@ -441,6 +441,7 @@ public class UCS_Mag : UdonSharpBehaviour
         currentAmmo = GetMaxAmmo();
         isHeld = false;
         isSocketed = false;
+        currentSocket = null;
         syncedSocketed = false;
         isInUse = false;
         syncedInUse = false;
