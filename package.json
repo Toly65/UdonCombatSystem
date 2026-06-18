@@ -1,0 +1,20 @@
+{
+  "name": "com.toly65.udon-combat-system",
+  "displayName": "Udon Combat System",
+  "version": "2.0.0",
+  "description": "A combat system for VRChat's Udon",
+  "gitDependencies": {},
+  "vpmDependencies": {
+    "com.vrchat.udonsharp": "1.3.x",
+    "com.vrchat.worlds": "3.10.3"
+  },
+  "author": {
+    "name": "toly65",
+    "email": "tolygillman@gmail.com",
+    "url": ""
+  },
+  "legacyFolders": {},
+  "legacyFiles": {},
+  "localPath": "F:\\unity projects\\UdonStowSystemVPM\\Packages\\com.toly65.udon-combat-system",
+  "hideInEditor": false
+}

@@ -1,0 +1,17 @@
+{
+  "name": "com.toly65.udon-combat-system",
+  "references": [
+    "UdonSharp.Runtime",
+    "VRC.SDK3",
+    "VRC.SDKBase",
+    "VRC.Udon"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "defineConstraints": [],
+  "optionalUnityReferences": []
+}
