@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_FrontGripScript
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: eee0ddcb900224b46887662627d51d3c,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: a7babc1a3c87497438355436a17ec5f7,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -62,7 +62,7 @@ MonoBehaviour:
       Data: 3|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_TwoHandedManager, Assembly-CSharp
+      Data: UCS_TwoHandedManager, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

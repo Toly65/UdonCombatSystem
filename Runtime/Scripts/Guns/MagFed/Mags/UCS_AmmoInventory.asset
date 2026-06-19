@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_AmmoInventory
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 5f02471aab4ad934ca9df3ef4ac22dcf,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 295cd65d8ad043147b6d76210c55f1dc,
     type: 2}
   udonAssembly: 
   assemblyError: 

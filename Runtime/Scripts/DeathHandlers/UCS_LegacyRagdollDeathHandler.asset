@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_LegacyRagdollDeathHandler
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 7b6eaac5714eabd4b88bb38e3a180e38,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 84c91e61588883541a0c43df89d3542e,
     type: 2}
   udonAssembly: 
   assemblyError: 

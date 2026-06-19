@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_HitEffectBase
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 84a0ebf1076007646bbb42e373d84594,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 4176b426322339d43b1c41a0f3673d24,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -140,7 +140,7 @@ MonoBehaviour:
       Data: 9|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_HitEffectsPool, Assembly-CSharp
+      Data: UCS_HitEffectsPool, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

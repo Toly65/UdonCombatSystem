@@ -160,6 +160,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
 
     protected virtual void Start()
     {
+        Debug.Log($"[UCS auto] Start name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
         screenCamera = VRCCameraSettings.ScreenCamera;
 
         // compute cycle time from RPM (seconds per shot)
@@ -189,6 +190,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
 
     public virtual void TriggerPull()
     {
+        Debug.Log($"[UCS auto] base.TriggerPull name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
         // only fire when a chambered round is available
         if ((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)
         {
@@ -252,6 +254,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     private bool isAutoFiring = false;//no need to sync this since they are called via network events
     public void StartAuto()
     {
+        Debug.Log($"[UCS auto] StartAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} owner={IsPickupOwner()}");
         if (isAutoFiring)
         {
             return;
@@ -280,19 +283,32 @@ public class UCS_BaseGun : UdonSharpBehaviour
     }
     public void FireAuto()
     {
-        if(isAutoFiring && (InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)
+        Debug.Log($"[UCS auto] FireAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} cooldownReady={IsFireCooldownReady()}");
+        if (!isAutoFiring || isReloading)
         {
-            if (!IsFireCooldownReady())
-            {
-                SendCustomEventDelayedSeconds("FireAuto", GetFireCooldownRemaining());
-                return;
-            }
-
-            MarkFireCycleUsed();
-            FireGun();
-            //invoke next shot based on cycle time
-            SendCustomEventDelayedSeconds("FireAuto", CycleTime);
+            return;
         }
+
+        // Keep the loop running as long as there's ammo. FireGun() itself checks
+        // bulletChambered internally and only fires when a round is actually ready.
+        // This handles the complex gun where bulletChambered is temporarily cleared
+        // during slide ejection while the next round is being chambered.
+        bool hasAmmo = InfiniteAmmo || InfiniteMagazine || bulletChambered || CurrentAmmo > 0;
+        if (!hasAmmo)
+        {
+            return;
+        }
+
+        if (!IsFireCooldownReady())
+        {
+            SendCustomEventDelayedSeconds("FireAuto", GetFireCooldownRemaining());
+            return;
+        }
+
+        MarkFireCycleUsed();
+        FireGun();
+        //invoke next shot based on cycle time
+        SendCustomEventDelayedSeconds("FireAuto", CycleTime);
     }
 
     private bool IsFireCooldownReady()
@@ -447,6 +463,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     int burstShotsRemaining;
     public void FireGun()
     {
+        Debug.Log($"[UCS auto] FireGun name={gameObject.name} willFire={((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)} bulletChambered={bulletChambered} isReloading={isReloading} CurrentAmmo={CurrentAmmo}");
         //to do: implement burst logic
         if((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)
         {
@@ -976,7 +993,7 @@ public class UCS_BaseGunEditor : Editor
         if (gunSettingsFoldout)
         {
             EditorGUI.indentLevel++;
-            // Rate of fire moved out of base editor
+            EditorGUILayout.PropertyField(roundsPerMinute, new GUIContent("Rounds Per Minute (RPM)"));
             // magazine-specific fields live on UCS_MagFedGun; guard so feed-agnostic
             // guns (tube, revolver, break-action) don't NRE here.
             if (magazineSize != null) EditorGUILayout.PropertyField(magazineSize);
@@ -1034,8 +1051,11 @@ public class UCS_BaseGunEditor : Editor
         {
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(gunAnimator);
-            EditorGUILayout.PropertyField(cycleAnimation);
-            if (reloadAnimation != null)
+            if (!(target is UCS_ComplexGun))
+            {
+                EditorGUILayout.PropertyField(cycleAnimation);
+            }
+            if (reloadAnimation != null && !(target is UCS_ComplexGun))
             {
                 EditorGUILayout.PropertyField(reloadAnimation);
             }

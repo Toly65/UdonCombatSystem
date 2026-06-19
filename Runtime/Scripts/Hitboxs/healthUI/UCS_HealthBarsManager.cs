@@ -36,21 +36,6 @@ public class UCS_HealthBarsManager : UdonSharpBehaviour
 		RefreshHealthBar(true);
 	}
 
-	private void Update()
-	{
-		if (Utilities.IsValid(localPlayer))
-		{
-			bool currentIsVR = localPlayer.IsUserInVR();
-			if (currentIsVR != isVR)
-			{
-				isVR = currentIsVR;
-				UpdateBarVisibility();
-			}
-		}
-
-		RefreshHealthBar(false);
-	}
-
 	private void RefreshHealthBar(bool force)
 	{
 		float maxHealth = Mathf.Max(1f, pushedMaxHealth);

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_Hitbox
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 4c3e202d950fd844b9f55ac6987197b3,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 5af2f2687ae176f45a5a43b42f57fd1a,
     type: 2}
   udonAssembly: 
   assemblyError: 

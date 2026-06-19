@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_TwoHandedManager
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 39aabaa31e4d719438dcfee8e1bdfd67,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 28f037e3c6286e74ca7240f349f646d2,
     type: 2}
   udonAssembly: 
   assemblyError: 

@@ -92,6 +92,12 @@ public class UCS_HitEffectsPool : UdonSharpBehaviour
     public GameObject AcquireInstance()
     {
         Transform parent = PoolParent != null ? PoolParent : this.transform;
-        return GetFromPool(ref Pool, Prefab, parent);
+        GameObject go = GetFromPool(ref Pool, Prefab, parent);
+        if (go != null)
+        {
+            UCS_HitEffectBase effect = go.GetComponent<UCS_HitEffectBase>();
+            if (effect != null) effect.Initialize(this);
+        }
+        return go;
     }
 }

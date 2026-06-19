@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_MagPool
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 04ef3ccf9817a34458de4ba6dcfdeb64,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 9b6ddf57c8f423c4f96022a81d504bbd,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -116,7 +116,7 @@ MonoBehaviour:
       Data: 6|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_Mag[], Assembly-CSharp
+      Data: UCS_Mag[], com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -362,7 +362,7 @@ MonoBehaviour:
       Data: 22|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_AmmoInventory, Assembly-CSharp
+      Data: UCS_AmmoInventory, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

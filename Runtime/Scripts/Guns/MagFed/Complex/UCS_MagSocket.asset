@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_MagSocket
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: f25696c690083674f82d063c23360a4d,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: c3f51c71224c94f4fa3d51427c3d2bb1,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -62,7 +62,7 @@ MonoBehaviour:
       Data: 3|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_ComplexGun, Assembly-CSharp
+      Data: UCS_ComplexGun, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -128,7 +128,7 @@ MonoBehaviour:
       Data: 8|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_MagBelt, Assembly-CSharp
+      Data: UCS_MagBelt, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -368,7 +368,7 @@ MonoBehaviour:
       Data: 24|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_Mag, Assembly-CSharp
+      Data: UCS_Mag, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

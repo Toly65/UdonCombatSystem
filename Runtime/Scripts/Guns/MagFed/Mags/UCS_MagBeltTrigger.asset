@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_MagBeltTrigger
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 96062725ed38771488ba57cc3a3ea37c,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: f6d731265121d0248b5ba9554525c88b,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -122,7 +122,7 @@ MonoBehaviour:
       Data: 7|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_MagBelt, Assembly-CSharp
+      Data: UCS_MagBelt, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

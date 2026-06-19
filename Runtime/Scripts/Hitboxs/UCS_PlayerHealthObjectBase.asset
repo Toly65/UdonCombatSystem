@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_PlayerHealthObjectBase
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: c1b4717991d983a4ba8ea8aa0a3916c9,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 2c7d3a10511ade24c98002f6896de34c,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -506,7 +506,7 @@ MonoBehaviour:
       Data: 29|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_HitboxUpdater, Assembly-CSharp
+      Data: UCS_HitboxUpdater, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -572,7 +572,7 @@ MonoBehaviour:
       Data: 34|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_HealthBarsManager, Assembly-CSharp
+      Data: UCS_HealthBarsManager, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -632,7 +632,7 @@ MonoBehaviour:
       Data: 38|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_DeathHandlerBase, Assembly-CSharp
+      Data: UCS_DeathHandlerBase, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -755,7 +755,7 @@ MonoBehaviour:
       Data: 46|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_PlayerHitbox[], Assembly-CSharp
+      Data: UCS_PlayerHitbox[], com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -1025,7 +1025,7 @@ MonoBehaviour:
       Data: 60|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: HitboxLODLevel, Assembly-CSharp
+      Data: HitboxLODLevel, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 

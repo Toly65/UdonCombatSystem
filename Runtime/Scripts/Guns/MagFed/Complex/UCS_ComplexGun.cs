@@ -562,6 +562,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         {
             slideBeingHeld = slidePhysBone.IsGrabbed;
         }
+        Debug.Log($"[UCS auto] ComplexGun.TriggerPull name={gameObject.name} slideLockedBack={slideLockedBack} slideBeingHeld={slideBeingHeld}");
         if (slideLockedBack || slideBeingHeld)
         {
             //if the slide is locked back, or held back by the player, we don't allow firing

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_WristTracker
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 2c6014e12d1573346af1f1657e640eb9,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: cc7e9687521ebd242a6c136d35de4759,
     type: 2}
   udonAssembly: 
   assemblyError: 

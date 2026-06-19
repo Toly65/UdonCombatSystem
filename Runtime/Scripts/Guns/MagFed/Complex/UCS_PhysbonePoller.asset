@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UCS_PhysbonePoller
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: aecd1bf20aa6cfe40955363d9e577266,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 8f95d7ec29c726e419aa8f149d40672e,
     type: 2}
   udonAssembly: 
   assemblyError: 
@@ -62,7 +62,7 @@ MonoBehaviour:
       Data: 3|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_SliderHandler, Assembly-CSharp
+      Data: UCS_SliderHandler, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
@@ -236,7 +236,7 @@ MonoBehaviour:
       Data: 14|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UCS_ComplexGun, Assembly-CSharp
+      Data: UCS_ComplexGun, com.toly65.udon-combat-system
     - Name: 
       Entry: 8
       Data: 
