@@ -6,9 +6,6 @@ This package adds a modular, VR-physical combat system for VRChat worlds built w
 
 ## How to Install
 
-You can install this package in either of these ways:
-
-- Grab the latest release from GitHub: [Latest Release](https://github.com/Toly65/UdonCombatSystem/releases/latest)
 - Add the VPM listing to Creator Companion: [Add Repo](https://toly65.github.io/vpm/add-repo.html)
 
 ## Demo Videos
