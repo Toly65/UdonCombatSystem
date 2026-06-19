@@ -61,7 +61,6 @@ Each Complex Gun supports one-handed (pistol) and two-handed (rifle) setups, wit
 - **Shooting ranges** — target practice with score tracking via custom hitbox overrides.
 - **Survival or exploration maps** — limited ammo, magazine management, and lootable weapon pickups.
 - **FPS-style game worlds** — team deathmatch, co-op horde modes, or PvE encounters with hitbox-driven enemy health.
-- **Any world that wants guns with weight** — if you want pulling the trigger to feel like an event, not a button press.
 
 ## Scripting & Extensibility
 
