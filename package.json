@@ -1,12 +1,12 @@
 {
   "name": "com.toly65.udon-combat-system",
   "displayName": "Udon Combat System",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A combat system for VRChat's Udon",
   "gitDependencies": {},
   "vpmDependencies": {
-    "com.vrchat.udonsharp": "1.3.x",
-    "com.vrchat.worlds": "3.10.3"
+    "com.vrchat.worlds": "3.10.3",
+    "com.toly65.udon-stow-system": "1.0.x"
   },
   "author": {
     "name": "toly65",
