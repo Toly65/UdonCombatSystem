@@ -25,7 +25,6 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}.zip" >> $GITHUB_ENV
-          echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
 
       - name: Create Zip
         uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
@@ -35,21 +34,6 @@ jobs:
           filename: "${{ env.zipFile }}"
           exclusions: "*.git* .github/*"
 
-      - run: find . -name \*.meta >> metaList
-
-      # The create-unitypackage action calls rmdirSync('/tmp/tmp') unconditionally
-      # at startup. In Node.js 20+, rmdirSync throws ENOENT when the path does not
-      # exist. Pre-creating the directory allows the action to remove and recreate
-      # it cleanly.
-      - name: Create tmp directory
-        run: mkdir -p /tmp/tmp
-
-      - name: Create UnityPackage
-        uses: pCYSl5EDgo/create-unitypackage@e28c7a4616b2754c564b0a959a03b3c89b756fdb
-        with:
-          package-path: ${{ env.unityPackage }}
-          include-files: metaList
-
       - name: Make Release
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
@@ -57,5 +41,4 @@ jobs:
           draft: true
           files: |
             ${{ env.zipFile }}
-            ${{ env.unityPackage }}
             package.json
