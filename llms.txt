@@ -1,0 +1,36 @@
+# Udon Combat System (UCS)
+
+> A modular, VR-physical combat system for VRChat worlds, built with Udon/UdonSharp. Provides physically-reloaded guns (manual magazine eject/insert/slide-rack), hitscan and projectile firing, a team-aware player health/hitbox system, hit effects, and configurable death handling — all networked across players.
+
+This is a VRChat Creator Companion (VCC/VPM) Unity package: `com.toly65.udon-combat-system`.
+
+## Start here
+
+- [Wiki Home](https://github.com/Toly65/UdonCombatSystem/wiki) — index of all documentation. Authoritative and current; prefer this over inferring behavior from code comments alone.
+- [Getting Started](https://github.com/Toly65/UdonCombatSystem/wiki/Getting-Started) — install the package and drop in the core combat prefab (no coding).
+- [Gun Setup](https://github.com/Toly65/UdonCombatSystem/wiki/Gun-Setup) — drag-and-drop setup for the included G17 (one-handed) and M4 (two-handed) gun prefabs.
+- [Health System Setup](https://github.com/Toly65/UdonCombatSystem/wiki/Health-System-Setup) — drag-and-drop setup for player health, hitboxes, teams, death handling, and health bar UI.
+
+## Script reference (for extending the system)
+
+- [Guns](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Guns) — `UCS_BaseGun`, `UCS_MagFedGun`, `UCS_ArcadeGun` (stub, non-functional), `UCS_ComplexGun`, slide/socket/grip helpers, firing pipeline.
+- [Magazines](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Magazines) — `UCS_Mag`, `UCS_MagPool`, `UCS_MagBelt`, `UCS_MagBeltTrigger`, `UCS_MagPickup`, `UCS_AmmoInventory`.
+- [Hitboxes and Health](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Hitboxes-and-Health) — `UCS_Hitbox`, `UCS_PlayerHitbox`, `UCS_PlayerHealthObjectBase`, `UCS_HitboxUpdater`, health bar UI trackers, hitbox LOD system, teams, damage types.
+- [Effects and Projectiles](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Effects-and-Projectiles) — `UCS_HitEffectsPool`, `UCS_HitEffectBase`, `UCS_ProjectileManager`.
+- [Death Handlers](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Death-Handlers) — `UCS_DeathHandlerBase`, `UCS_TeleportDeathHandler` (recommended), `UCS_LegacyRagdollDeathHandler` (not recommended — depends on VRChat's unreliable legacy Combat API), `UCS_StationDeathHandler` (unimplemented stub).
+
+## Source layout
+
+- `Runtime/Scripts/Guns/` — gun scripts (`Base/`, `MagFed/` incl. `Arcade/`, `Complex/`, `Mags/`).
+- `Runtime/Scripts/Hitboxs/` — hitbox/health system, incl. `healthUI/` for health bar tracking.
+- `Runtime/Scripts/HitEffects/` — pooled hit effect scripts.
+- `Runtime/Scripts/DeathHandlers/` — death handler scripts.
+- `Prefabs/` — drag-in prefabs: `Combat System Setup.prefab`, `Guns/G17 setup.prefab`, `Guns/M4 setup.prefab`, `HealthSystem.prefab`, `MagBelt.prefab`, `HitSparkPoolExample.prefab`.
+
+## Known caveats worth checking before relying on behavior
+
+- Only the LOD 0 (Pill) hitbox tier is implemented; LOD 1 (Segmented) and LOD 2 (Articulated) have switching logic in place but no shipped hitbox content yet.
+- `UCS_ArcadeGun` is a non-functional stub with no dedicated prefab — use `UCS_ComplexGun` (G17/M4) instead.
+- `UCS_StationDeathHandler` is an empty, unimplemented stub — use `UCS_TeleportDeathHandler`.
+- `UCS_LegacyRagdollDeathHandler` depends on VRChat's legacy Combat API, which is unreliable in practice — not recommended for production worlds.
+- The wiki is the accurate source for current field/method names; do not assume older tutorial videos linked elsewhere reflect the current (rewritten) architecture.
