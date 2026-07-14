@@ -12,9 +12,9 @@ Full setup guides and script reference live on the **[GitHub Wiki](https://githu
 
 - Add the VPM listing to Creator Companion: [Add Repo](https://toly65.github.io/vpm/add-repo.html)
 
-## Demo Videos
+## Demo Video
 
-*Coming soon — check back for VR and desktop gameplay demos.*
+[Watch on YouTube](https://youtu.be/ptbnpP2fJO8)
 
 ## What It Does
 
