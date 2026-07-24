@@ -214,7 +214,7 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
             if (isPrimaryHeld)
             {
                 primaryGripPickup.transform.SetParent(primaryGripOriginalParent, true);
-                SetPrimaryGripPhysics(false);
+                SetPrimaryGripPhysics(true);
             }
             else if (isSecondaryHeld)
             {

@@ -94,6 +94,7 @@ public class UCS_MagPickup : UdonSharpBehaviour
             // ensure pickup rigidbody behaves correctly when held
             mag.SetPickupUseGravity(true);
             mag.SetPickupKinematic(false);
+            mag.SetPickupDetectCollisions(true);
 
             UCS_MagBelt sourceBelt = mag.GetSourceBelt();
             if (sourceBelt != null)
@@ -137,6 +138,7 @@ public class UCS_MagPickup : UdonSharpBehaviour
                 // re-enable gravity and restore kinematic state when dropped
                 mag.SetPickupUseGravity(true);
                 mag.SetPickupKinematic(false);
+                mag.SetPickupDetectCollisions(true);
             }
         }
 

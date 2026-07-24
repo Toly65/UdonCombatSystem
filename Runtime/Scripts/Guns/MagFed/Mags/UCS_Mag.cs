@@ -204,6 +204,7 @@ public class UCS_Mag : UdonSharpBehaviour
 
             SetPickupUseGravity(false);
             SetPickupKinematic(true);
+            SetPickupDetectCollisions(false);
 
             if (Networking.IsOwner(gameObject))
             {
@@ -214,6 +215,7 @@ public class UCS_Mag : UdonSharpBehaviour
         {
             SetPickupUseGravity(true);
             SetPickupKinematic(false);
+            SetPickupDetectCollisions(true);
             ApplyVisualState();
         }
         if (Networking.IsOwner(gameObject))
@@ -359,6 +361,25 @@ public class UCS_Mag : UdonSharpBehaviour
         }
     }
 
+    public void SetPickupDetectCollisions(bool detect)
+    {
+        Rigidbody rb = GetPickupRigidbody();
+        if (rb != null)
+        {
+            rb.detectCollisions = detect;
+        }
+
+        // Also toggle collider components on the pickup root for safety
+        if (magPickupRoot != null)
+        {
+            Collider[] colliders = magPickupRoot.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                colliders[i].enabled = detect;
+            }
+        }
+    }
+
     public void SetPickupVisualVisible(bool visible)
     {
         syncedPickupVisualActive = visible;
@@ -456,6 +477,7 @@ public class UCS_Mag : UdonSharpBehaviour
         // Restore pickup rigidbody to default physics state
         SetPickupUseGravity(true);
         SetPickupKinematic(false);
+        SetPickupDetectCollisions(true);
         RequestSerialization();
     }
 

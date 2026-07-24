@@ -175,6 +175,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             // disable gravity and make kinematic on the mag pickup while socketed so it stays aligned to the socket
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
+            currentMag.SetPickupDetectCollisions(false);
 
             UCS_MagPickup magPickup = currentMag.GetMagPickup();
             if (magPickup != null)
@@ -334,6 +335,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             // re-enable gravity and restore kinematic state on the mag pickup when it's ejected to the world
             currentMag.SetPickupUseGravity(true);
             currentMag.SetPickupKinematic(false);
+            currentMag.SetPickupDetectCollisions(true);
 
             UCS_MagPickup magPickup = currentMag.GetMagPickup();
             if (magPickup != null)
@@ -418,6 +420,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         magToClear.SetPickupVisualVisible(false);
         magToClear.SetPickupUseGravity(false);
         magToClear.SetPickupKinematic(true);
+        magToClear.SetPickupDetectCollisions(false);
         magToClear.ClearReturnToPool();
 
         currentMag = null;
@@ -474,6 +477,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             EnsureGunOwnerOwnsMag(currentMag);
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
+            currentMag.SetPickupDetectCollisions(false);
             gun.SetMagazineInserted(true);
             return;
         }
@@ -506,6 +510,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.SetHeld(false);
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
+            currentMag.SetPickupDetectCollisions(false);
             currentMag.ClearReturnToPool();
         }
 
