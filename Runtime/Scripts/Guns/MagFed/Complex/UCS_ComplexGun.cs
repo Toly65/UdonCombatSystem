@@ -225,8 +225,6 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
         if (magSocket != null)
         {
-            magSocket.TryReattachSocketedMag();
-            magSocket.RefreshSocketedMagPickupState();
             magSocket.SetSocketedMagGunHeld(true);
         }
 
@@ -261,8 +259,6 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (magSocket != null)
         {
             magSocket.RefreshSocketedMagFromGunState();
-            magSocket.TryReattachSocketedMag();
-            magSocket.RefreshSocketedMagPickupState();
             magSocket.SetSocketedMagGunHeld(true);
         }
     }
@@ -363,7 +359,6 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
         if (magSocket != null)
         {
-            magSocket.RefreshSocketedMagPickupState();
             magSocket.SetSocketedMagGunHeld(false);
         }
 

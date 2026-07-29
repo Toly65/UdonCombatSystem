@@ -164,17 +164,12 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.SetPickupVisualVisible(false);
             currentMag.ClearReturnToPool();
             currentMag.SetSocket(this);
-            //gun.SetMagazineVisualVisible(true);
-            // disable gravity and make kinematic on the mag pickup while socketed so it stays aligned to the socket
+            // disable gravity and make kinematic on the mag pickup while socketed so the anchor can keep it in place
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
-            currentMag.SetPickupDetectCollisions(false);
-
-            UCS_MagPickup magPickup = currentMag.GetMagPickup();
-            if (magPickup != null)
-            {
-                magPickup.SetGunHeld(gunIsHeld);
-            }
+            // ponytail: stays true while socketed. isKinematic already stops the mag being moved
+            // by physics; detectCollisions=false additionally hides it from VRChat's grab search.
+            currentMag.SetPickupDetectCollisions(true);
         }
 
         if (gun != null)
@@ -331,12 +326,6 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.SetPickupUseGravity(true);
             currentMag.SetPickupKinematic(false);
             currentMag.SetPickupDetectCollisions(true);
-
-            UCS_MagPickup magPickup = currentMag.GetMagPickup();
-            if (magPickup != null)
-            {
-                magPickup.SetGunHeld(false);
-            }
             currentMag.ClearSocket();
         }
 
@@ -469,7 +458,11 @@ public class UCS_MagSocket : UdonSharpBehaviour
             EnsureGunOwnerOwnsMag(currentMag);
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
-            currentMag.SetPickupDetectCollisions(false);
+            // ponytail: stays true while socketed. isKinematic already stops the mag being moved
+            // by physics; detectCollisions=false additionally hides it from VRChat's grab search.
+            currentMag.SetPickupDetectCollisions(true);
+            currentMag.SetWorldVisible(false);
+            currentMag.SetPickupVisualVisible(false);
             gun.SetMagazineInserted(true);
             return;
         }
@@ -502,7 +495,11 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.SetHeld(false);
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
-            currentMag.SetPickupDetectCollisions(false);
+            // ponytail: stays true while socketed. isKinematic already stops the mag being moved
+            // by physics; detectCollisions=false additionally hides it from VRChat's grab search.
+            currentMag.SetPickupDetectCollisions(true);
+            currentMag.SetWorldVisible(false);
+            currentMag.SetPickupVisualVisible(false);
             currentMag.ClearReturnToPool();
         }
 
@@ -557,95 +554,20 @@ public class UCS_MagSocket : UdonSharpBehaviour
         }
     }
 
-    public void RefreshSocketedMagPickupState()
-    {
-        if (currentMag == null)
-        {
-            return;
-        }
-
-        UCS_MagPickup magPickup = currentMag.GetMagPickup();
-        if (magPickup != null)
-        {
-            if (gun != null)
-            {
-                magPickup.SetGunHeld(true);
-            }
-        }
-    }
-
-    // Called when the local player picks up the gun. If this client's currentMag is null
-    // (ownership transferred without InsertMag ever running here), find the mag that is
-    // frozen at the anchor position and re-establish the socket relationship so EjectMag
-    // works correctly for the new owner.
-    public void TryReattachSocketedMag()
-    {
-        if (currentMag != null)
-        {
-            return;
-        }
-
-        if (gun == null)
-        {
-            return;
-        }
-
-        UCS_MagPool magPool = gun.GetRequiredMagPool();
-        if (magPool == null)
-        {
-            return;
-        }
-
-        int insertedMagId = gun.GetInsertedMagId();
-        UCS_Mag found = insertedMagId >= 0 ? magPool.FindActiveMagById(insertedMagId) : null;
-        if (found == null)
-        {
-            Transform anchorTransform = gun.GetMagazinePickupAnchor();
-            if (anchorTransform != null)
-            {
-                found = magPool.FindActiveMagNear(anchorTransform.position, 0.5f);
-            }
-        }
-        if (found == null)
-        {
-            return;
-        }
-
-        // Take ownership of the frozen mag before reasserting socket state.
-        Networking.SetOwner(Networking.LocalPlayer, found.gameObject);
-        Transform foundPickupRoot = found.GetPickupRootTransform();
-        if (foundPickupRoot != null && foundPickupRoot.gameObject != found.gameObject)
-        {
-            Networking.SetOwner(Networking.LocalPlayer, foundPickupRoot.gameObject);
-        }
-
-        currentMag = found;
-        EnsureGunOwnerOwnsMag(currentMag);
-        currentMag.SetSocketed(true);
-        currentMag.SetHeld(false);
-        currentMag.SetSocket(this);
-        currentMag.SetPickupUseGravity(false);
-        currentMag.SetPickupKinematic(true);
-
-        gun.SetMagazineInserted(true);
-        UpdateAnchorState();
-    }
-
     public void SetSocketedMagGunHeld(bool held)
     {
         gunIsHeld = held;
 
-        if (currentMag == null)
+        // Transfer socket GameObject ownership to the player holding the gun so that
+        // network events and VRCObjectSync on child objects (e.g. the anchor) work.
+        if (held && gun != null && Networking.IsOwner(gun.gameObject) && !Networking.IsOwner(gameObject))
         {
-            return;
-        }
-
-        UCS_MagPickup magPickup = currentMag.GetMagPickup();
-        if (magPickup != null)
-        {
-            magPickup.SetGunHeld(held);
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
         }
     }
 
-    
+    public bool IsGunHeld()
+    {
+        return gunIsHeld;
+    }
 }

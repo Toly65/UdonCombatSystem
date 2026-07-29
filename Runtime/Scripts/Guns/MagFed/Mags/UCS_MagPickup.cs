@@ -11,7 +11,6 @@ public class UCS_MagPickup : UdonSharpBehaviour
     [SerializeField] private UCS_Mag mag; //reference to the mag script on the mag prefab, which will handle ammo count and despawning
     [SerializeField] private UCS_MagPool magPool; //reference to the mag pool
     [SerializeField]private VRC_Pickup magPickup;
-    private bool gunIsHeld;
     private VRCPlayerApi cachedPickupOwner;
     private UCS_MagSocket lastSocketPulledFrom;
     // manager responsibilities merged into UCS_Mag; no separate mag manager required
@@ -39,12 +38,6 @@ public class UCS_MagPickup : UdonSharpBehaviour
         }
     }
 
-    public void SetGunHeld(bool held)
-    {
-        gunIsHeld = held;
-        ApplyPickupState();
-    }
-
     public override void PostLateUpdate()
     {
         ApplyPickupState();
@@ -57,12 +50,16 @@ public class UCS_MagPickup : UdonSharpBehaviour
             return;
         }
 
-        bool isSocketed = mag != null && mag.IsSocketed();
+        // ponytail: the socket is the only reliable source of truth here. mag.IsSocketed() is a
+        // local bool that OnDeserialization clobbers from syncedSocketed, so it disagrees with the
+        // socket whenever a network update lands (e.g. during a gun drop).
+        UCS_MagSocket socket = mag != null ? mag.GetSocket() : null;
+        bool isSocketed = socket != null && socket.GetCurrentMag() == mag;
         bool allowPickup = !isSocketed;
 
         if (isSocketed)
         {
-            allowPickup = gunIsHeld && mag != null && Networking.IsOwner(mag.gameObject);
+            allowPickup = socket.IsGunHeld() && Networking.IsOwner(mag.gameObject);
         }
 
         magPickup.pickupable = allowPickup;

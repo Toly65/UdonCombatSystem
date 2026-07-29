@@ -204,7 +204,8 @@ public class UCS_Mag : UdonSharpBehaviour
 
             SetPickupUseGravity(false);
             SetPickupKinematic(true);
-            SetPickupDetectCollisions(false);
+            // ponytail: see UCS_MagSocket — collisions stay on so the mag remains grabbable.
+            SetPickupDetectCollisions(true);
 
             if (Networking.IsOwner(gameObject))
             {
@@ -369,15 +370,9 @@ public class UCS_Mag : UdonSharpBehaviour
             rb.detectCollisions = detect;
         }
 
-        // Also toggle collider components on the pickup root for safety
-        if (magPickupRoot != null)
-        {
-            Collider[] colliders = magPickupRoot.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < colliders.Length; i++)
-            {
-                colliders[i].enabled = detect;
-            }
-        }
+        // ponytail: colliders stay enabled on purpose. Disabling them made the socketed mag
+        // ungrabbable (VRC_Pickup needs a live collider to be targeted). rb.detectCollisions=false
+        // already stops physics contacts while overlap/raycast queries still hit.
     }
 
     public void SetPickupVisualVisible(bool visible)
