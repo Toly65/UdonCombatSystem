@@ -436,6 +436,10 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
     public void SetInsertedMagId(int magId)
     {
+        if(magId == syncedMagazineId)
+        {
+            return;
+        }
         syncedMagazineId = magId;
         if (Networking.IsOwner(gameObject))
         {
@@ -445,6 +449,10 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
     public void SetMagazineVisualVisible(bool visible)
     {
+        if (visible == syncedMagazineVisualVisible)
+        {
+            return;
+        }
         syncedMagazineVisualVisible = visible;
         if (magazineVisualRoot != null)
         {
@@ -744,6 +752,32 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (GunAnimator != null)
         {
             GunAnimator.SetBool(ParamBulletVisible, visible);
+        }
+    }
+
+    // Called by spawner/stow systems to reset the gun to an empty, unloaded state.
+    // This clears any socketed mag (returns it to the pool) and zeros all ammo state
+    // so the gun appears freshly spawned with no magazine.
+    public void ClearMagazineForSpawner()
+    {
+        if (magSocket != null)
+        {
+            magSocket.ClearSocketForSpawner();
+        }
+
+        CurrentAmmo = 0;
+        bulletChambered = false;
+        bulletInChamberWasFired = false;
+        needsReload = true;
+        slideLockedBack = false;
+        slideCycleNeedsChamber = false;
+        UpdateBulletVisibility(false);
+        SetMagazineInserted(false);
+        SetMagazineVisualVisible(false);
+
+        if (Networking.IsOwner(gameObject))
+        {
+            RequestSerialization();
         }
     }
 }

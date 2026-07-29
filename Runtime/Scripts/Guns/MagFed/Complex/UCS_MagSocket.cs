@@ -22,7 +22,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
     private int lastLoggedCurrentMagId = int.MinValue;
     private int lastLoggedGunOwnerId = int.MinValue;
 
-    private Transform magPickupAnchor;
+    [SerializeField] private UCS_MagSocketAnchor magSocketAnchor;
 
     // manager responsibilities merged into UCS_Mag; operate directly on the mag
 
@@ -36,25 +36,23 @@ public class UCS_MagSocket : UdonSharpBehaviour
         return currentMag != null;
     }
 
-    public void OnEnable()
+    public UCS_Mag GetCurrentMag()
     {
-        CacheMagPickupAnchor();
-        RefreshSocketedMagFromGunState();
-        ApplyMagPickupAnchor();
+        return currentMag;
     }
 
-    private void CacheMagPickupAnchor()
+    public UCS_ComplexGun GetGun()
     {
-        if (gun != null)
-        {
-            magPickupAnchor = gun.GetMagazinePickupAnchor();
-        }
+        return gun;
+    }
+
+    public void OnEnable()
+    {
+        RefreshSocketedMagFromGunState();
     }
 
     private void InitializeEmptySocket()
     {
-        CacheMagPickupAnchor();
-
         bool localOwnsGun = gun != null && Networking.IsOwner(gun.gameObject);
         bool useMagBelt = gunIsHeld && localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
         bool hasSyncedMag = gun != null && gun.GetInsertedMagId() >= 0;
@@ -79,8 +77,6 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
     private void PreInsertMag()// for when a reload explicitly needs a fresh mag
     {
-        CacheMagPickupAnchor();
-
         bool localOwnsGun = gun != null && Networking.IsOwner(gun.gameObject);
         bool useMagBelt = gunIsHeld && localOwnsGun && Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR() && gun != null && magBelt != null;
         bool hasSyncedMag = gun != null && gun.GetInsertedMagId() >= 0;
@@ -139,8 +135,6 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
     public void InsertMag(UCS_Mag mag)// for when a mag is being inserted into the gun
     {
-        CacheMagPickupAnchor();
-
         if (mag == null)
         {
             return;
@@ -171,7 +165,6 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.ClearReturnToPool();
             currentMag.SetSocket(this);
             //gun.SetMagazineVisualVisible(true);
-            ApplyMagPickupAnchor();
             // disable gravity and make kinematic on the mag pickup while socketed so it stays aligned to the socket
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
@@ -192,6 +185,8 @@ public class UCS_MagSocket : UdonSharpBehaviour
             // Inform the gun of the inserted mag so it can adopt the mag's ammo count.
             gun.OnMagazineInserted(currentMag);
         }
+
+        UpdateAnchorState();
     }
 
     public void OnTriggerEnter(Collider other)
@@ -208,7 +203,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
         // Only the gun owner should process physical mag insertions; on remote clients
         // VRCObjectSync moves the mag to the anchor and would otherwise fire this trigger
-        // spuriously, setting currentMag and breaking ApplyMagPickupAnchor on those clients.
+        // spuriously, setting currentMag on those clients.
         if (gun == null || !Networking.IsOwner(gun.gameObject))
         {
             return;
@@ -354,6 +349,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         SetMagazineVisualObjectVisible(false);
 
         currentMag = null;
+        UpdateAnchorState();
     }
 
     public void ReloadMag()
@@ -425,18 +421,13 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
         currentMag = null;
         SetMagazineVisualObjectVisible(false);
+        UpdateAnchorState();
 
         UCS_MagPool pool = magToClear.GetMagPool();
         if (pool != null)
         {
             pool.ReturnMagToPool(magToClear);
         }
-    }
-
-    public override void PostLateUpdate()
-    {
-        RefreshSocketedMagFromGunState();
-        ApplyMagPickupAnchor();
     }
 
     public void RefreshSocketedMagFromGunState()
@@ -464,6 +455,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag = null;
             gun.SetMagazineInserted(false);
             SetMagazineVisualObjectVisible(false);
+            UpdateAnchorState();
             return;
         }
 
@@ -522,33 +514,23 @@ public class UCS_MagSocket : UdonSharpBehaviour
             lastLoggedCurrentMagId = afterId;
             Debug.Log($"[UCS_MagSocket] AfterRefresh currentMagId={afterId}");
         }
+        UpdateAnchorState();
     }
 
-    private void ApplyMagPickupAnchor()
+    private void UpdateAnchorState()
     {
-        CacheMagPickupAnchor();
-
-        if (currentMag == null || gun == null)
+        if (magSocketAnchor != null)
         {
-            return;
-        }
-        if (magPickupAnchor == null)
-        {
-            return;
-        }
-
-        // Belt-and-suspenders: even if currentMag is somehow set on a non-owner client,
-        // only the gun owner should drive the mag's position. Non-owners must not fight
-        // VRCObjectSync here — PostLateUpdate runs after sync updates and would win visually.
-        if (!Networking.IsOwner(gun.gameObject))
-        {
-            return;
-        }
-
-        Transform pickupRoot = currentMag.GetPickupRootTransform();
-        if (pickupRoot != null)
-        {
-            pickupRoot.SetPositionAndRotation(magPickupAnchor.position, magPickupAnchor.rotation);
+            // The anchor is only needed for the local gun owner. While socketed the mag pickup
+            // has SetWorldVisible(false) + SetPickupDetectCollisions(false), so remote players
+            // cannot see or grab it — there's nothing to anchor for them.
+            bool shouldBeActive = currentMag != null
+                && gun != null
+                && Networking.IsOwner(gun.gameObject);
+            if (magSocketAnchor.gameObject.activeSelf != shouldBeActive)
+            {
+                magSocketAnchor.gameObject.SetActive(shouldBeActive);
+            }
         }
     }
 
@@ -595,7 +577,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
     // Called when the local player picks up the gun. If this client's currentMag is null
     // (ownership transferred without InsertMag ever running here), find the mag that is
     // frozen at the anchor position and re-establish the socket relationship so EjectMag
-    // and ApplyMagPickupAnchor work correctly for the new owner.
+    // works correctly for the new owner.
     public void TryReattachSocketedMag()
     {
         if (currentMag != null)
@@ -603,8 +585,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             return;
         }
 
-        CacheMagPickupAnchor();
-        if (magPickupAnchor == null || gun == null)
+        if (gun == null)
         {
             return;
         }
@@ -619,7 +600,11 @@ public class UCS_MagSocket : UdonSharpBehaviour
         UCS_Mag found = insertedMagId >= 0 ? magPool.FindActiveMagById(insertedMagId) : null;
         if (found == null)
         {
-            found = magPool.FindActiveMagNear(magPickupAnchor.position, 0.5f);
+            Transform anchorTransform = gun.GetMagazinePickupAnchor();
+            if (anchorTransform != null)
+            {
+                found = magPool.FindActiveMagNear(anchorTransform.position, 0.5f);
+            }
         }
         if (found == null)
         {
@@ -643,6 +628,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         currentMag.SetPickupKinematic(true);
 
         gun.SetMagazineInserted(true);
+        UpdateAnchorState();
     }
 
     public void SetSocketedMagGunHeld(bool held)
