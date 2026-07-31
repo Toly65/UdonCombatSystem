@@ -22,6 +22,14 @@ public class UCS_MagSocket : UdonSharpBehaviour
     private int lastLoggedCurrentMagId = int.MinValue;
     private int lastLoggedGunOwnerId = int.MinValue;
 
+    // Resolving a socketed mag by pool ID is async (SetOwner + synced variables can lag
+    // behind the gun's syncedMagazineId, especially on a handoff / late join). Retry a
+    // short window before giving up so a freshly-handed gun still adopts its mag instead
+    // of leaving the socket (and thus the anchor) empty.
+    private const int MaxMagResolveRetries = 6;
+    private const int MagResolveRetryDelayFrames = 5;
+    private int pendingMagResolveRetries;
+
     [SerializeField] private UCS_MagSocketAnchor magSocketAnchor;
 
     // manager responsibilities merged into UCS_Mag; operate directly on the mag
@@ -442,6 +450,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
         if (gunMagId < 0)
         {
             currentMag = null;
+            pendingMagResolveRetries = 0;
             gun.SetMagazineInserted(false);
             SetMagazineVisualObjectVisible(false);
             UpdateAnchorState();
@@ -455,6 +464,10 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
         if (currentMag != null && currentMag.GetMagId() == gunMagId)
         {
+            // Re-link the mag to this socket (guards against a stale link on a pooled mag)
+            // so UCS_MagPickup.ApplyPickupState() sees it as socketed and the anchor knows
+            // which mag to position.
+            currentMag.SetSocket(this);
             EnsureGunOwnerOwnsMag(currentMag);
             currentMag.SetPickupUseGravity(false);
             currentMag.SetPickupKinematic(true);
@@ -464,6 +477,7 @@ public class UCS_MagSocket : UdonSharpBehaviour
             currentMag.SetWorldVisible(false);
             currentMag.SetPickupVisualVisible(false);
             gun.SetMagazineInserted(true);
+            UpdateAnchorState();
             return;
         }
 
@@ -474,34 +488,55 @@ public class UCS_MagSocket : UdonSharpBehaviour
         }
 
         UCS_Mag resolvedMag = magPool.FindActiveMagById(gunMagId);
-        if (resolvedMag != null)
+        if (resolvedMag == null)
         {
-            int resolvedId = resolvedMag.GetMagId();
-            if (resolvedId != lastLoggedCurrentMagId)
+            // The gun says a mag is inserted, but this client hasn't received that mag's
+            // synced state yet (SetOwner + synced vars are async; a late joiner may see the
+            // gun id before the mag object). Do NOT clear the gun's synced inserted / visual
+            // state here — just retry for a short window.
+            if (pendingMagResolveRetries < MaxMagResolveRetries)
             {
-                currentMag = resolvedMag;
-                EnsureGunOwnerOwnsMag(currentMag);
-                lastLoggedCurrentMagId = resolvedId;
-                Debug.Log($"[UCS_MagSocket] Resolved magId={(currentMag!=null?currentMag.GetMagId():-1)} magObj={(currentMag!=null?currentMag.gameObject.name:"null")}");
+                pendingMagResolveRetries++;
+                SendCustomEventDelayedFrames(nameof(RetryRefreshSocketedMag), MagResolveRetryDelayFrames);
             }
             else
             {
-                currentMag = resolvedMag;
+                // Retries exhausted: the mag is genuinely not resolvable on this client.
+                // Fall back to clearing the socket so the gun doesn't claim an inserted mag.
+                currentMag = null;
+                gun.SetMagazineInserted(false);
+                SetMagazineVisualObjectVisible(false);
+                UpdateAnchorState();
             }
-
-            currentMag.SetSocket(this);
-            EnsureGunOwnerOwnsMag(currentMag);
-            currentMag.SetSocketed(true);
-            currentMag.SetHeld(false);
-            currentMag.SetPickupUseGravity(false);
-            currentMag.SetPickupKinematic(true);
-            // ponytail: stays true while socketed. isKinematic already stops the mag being moved
-            // by physics; detectCollisions=false additionally hides it from VRChat's grab search.
-            currentMag.SetPickupDetectCollisions(true);
-            currentMag.SetWorldVisible(false);
-            currentMag.SetPickupVisualVisible(false);
-            currentMag.ClearReturnToPool();
+            return;
         }
+        pendingMagResolveRetries = 0;
+
+        int resolvedId = resolvedMag.GetMagId();
+        if (resolvedId != lastLoggedCurrentMagId)
+        {
+            currentMag = resolvedMag;
+            EnsureGunOwnerOwnsMag(currentMag);
+            lastLoggedCurrentMagId = resolvedId;
+            Debug.Log($"[UCS_MagSocket] Resolved magId={(currentMag!=null?currentMag.GetMagId():-1)} magObj={(currentMag!=null?currentMag.gameObject.name:"null")}");
+        }
+        else
+        {
+            currentMag = resolvedMag;
+        }
+
+        currentMag.SetSocket(this);
+        EnsureGunOwnerOwnsMag(currentMag);
+        currentMag.SetSocketed(true);
+        currentMag.SetHeld(false);
+        currentMag.SetPickupUseGravity(false);
+        currentMag.SetPickupKinematic(true);
+        // ponytail: stays true while socketed. isKinematic already stops the mag being moved
+        // by physics; detectCollisions=false additionally hides it from VRChat's grab search.
+        currentMag.SetPickupDetectCollisions(true);
+        currentMag.SetWorldVisible(false);
+        currentMag.SetPickupVisualVisible(false);
+        currentMag.ClearReturnToPool();
 
         gun.SetMagazineInserted(currentMag != null);
         SetMagazineVisualObjectVisible(currentMag != null);
@@ -512,6 +547,12 @@ public class UCS_MagSocket : UdonSharpBehaviour
             Debug.Log($"[UCS_MagSocket] AfterRefresh currentMagId={afterId}");
         }
         UpdateAnchorState();
+    }
+
+    // Delayed-retry entry point (see MaxMagResolveRetries above).
+    public void RetryRefreshSocketedMag()
+    {
+        RefreshSocketedMagFromGunState();
     }
 
     private void UpdateAnchorState()

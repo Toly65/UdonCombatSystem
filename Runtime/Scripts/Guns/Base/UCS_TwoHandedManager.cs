@@ -3,8 +3,26 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+// Which grips are currently held. Packed into a single synced int (bitmask) so the
+// grip state broadcasts to every client as one value.
+public enum UCS_GripState
+{
+    None = 0,
+    PrimaryOnly = 1,
+    SecondaryOnly = 2,
+    Both = 3
+}
+
 // Manages two-handed grip states and a look-at rotation for the gun visual.
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+//
+// Networking model:
+//  - The grip state (which grips are held) is [UdonSynced] so every client reparents
+//    the gun visual and locks/unlocks grips exactly like the holder.
+//  - Ownership is requested from the grabbing player when the primary grip is picked
+//    up; that player becomes the authority that serializes the grip state.
+//  - Remote clients run the same deterministic look-at / socket logic from the synced
+//    pickup transforms, so the held pose replicates instead of drifting.
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class UCS_TwoHandedManager : UdonSharpBehaviour
 {
     [Header("Grip Pickups")]
@@ -45,6 +63,12 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
     private bool primaryGripOriginalIsKinematic;
     private bool primaryGripOriginalDetectCollisions;
     private bool updateLoopActive;
+    // Networking
+    // Which grips are held, broadcast to every client. Written only by the owner.
+    [UdonSynced] private int syncedGripState = (int)UCS_GripState.None;
+    // True when the local player changed the grip state but ownership was still in
+    // flight (SetOwner is async); serialization is flushed in OnOwnershipTransferred.
+    private bool pendingSync;
     // Lifecycle
     void Start()
     {
@@ -90,12 +114,21 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
 
         updateLoopActive = false;
         UpdateGripPointParents(false, false);
+        RefreshGripPickupability();
+
+        // Sync the initial (empty) grip state so remote clients start consistent.
+        if (Networking.IsOwner(gameObject))
+            RequestSerialization();
     }
 
     void Update()
     {
         if (!updateLoopActive)
             return;
+
+        // Pickup ownership transfer is async; re-evaluate grabbability every frame so
+        // the owner can take the front grip the moment ownership settles.
+        RefreshGripPickupability();
 
         // Two-handed look-at runs every frame while both grips are held.
         if (primaryHeld && secondaryHeld)
@@ -106,6 +139,20 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
 
     public void PrimaryPickup()
     {
+        // The player who grabs the primary grip becomes the authority for the grip
+        // state. VRC auto-owns the primary pickup itself, but the manager's GameObject
+        // may differ, so request ownership here to authorize serialization.
+        if (Networking.LocalPlayer != null && !Networking.IsOwner(gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+
+        // Also take the secondary grip. If it stays owned by the master (or whoever
+        // last touched it), that client is authoritative for its synced transform and
+        // has no idea the gun is being held — so the front grip floats at its resting
+        // spot instead of being snapped to the gun's front grip where the player can
+        // actually grab it. Owning it lets THIS client's grip logic place it.
+        if (secondaryGripPickup != null && !Networking.IsOwner(secondaryGripPickup.gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, secondaryGripPickup.gameObject);
+
         SetGripState(true, secondaryHeld);
     }
 
@@ -116,6 +163,11 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
 
     public void SecondaryPickup()
     {
+        // Defensive: VRC auto-owns the front grip on grab, but that transfer is async.
+        // Ensure this client is authoritative so the pickup transform stays put.
+        if (secondaryGripPickup != null && !Networking.IsOwner(secondaryGripPickup.gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, secondaryGripPickup.gameObject);
+
         SetGripState(primaryHeld, true);
     }
 
@@ -124,7 +176,45 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
         SetGripState(primaryHeld, false);
     }
 
+    public override void OnDeserialization()
+    {
+        ApplyGripState(IsPrimaryFromState(syncedGripState), IsSecondaryFromState(syncedGripState));
+    }
+
+    public override void OnOwnershipTransferred(VRCPlayerApi player)
+    {
+        if (player == null || player != Networking.LocalPlayer)
+            return;
+
+        // Ownership landed after picking up the gun: re-evaluate grabbability now
+        // that ownership checks are valid, and flush any pending serialization.
+        RefreshGripPickupability();
+        TrySendSync();
+    }
+
+    // Local grip changes from pickup events. Only the holder's client runs this;
+    // remote clients receive the state through OnDeserialization instead.
     private void SetGripState(bool isPrimaryHeld, bool isSecondaryHeld)
+    {
+        if (isPrimaryHeld == primaryHeld && isSecondaryHeld == secondaryHeld)
+            return;
+
+        ApplyGripState(isPrimaryHeld, isSecondaryHeld);
+
+        // Broadcast the new grip state. Ownership may still be in flight (SetOwner
+        // is async), so TrySendSync defers until OnOwnershipTransferred confirms it.
+        int newState = ToGripState(isPrimaryHeld, isSecondaryHeld);
+        if (newState != syncedGripState)
+        {
+            syncedGripState = newState;
+            pendingSync = true;
+            TrySendSync();
+        }
+    }
+
+    // Applies a grip state to the runtime fields and the visual/parenting logic.
+    // Used for local changes (SetGripState) and remote receives (OnDeserialization).
+    private void ApplyGripState(bool isPrimaryHeld, bool isSecondaryHeld)
     {
         if (isPrimaryHeld == primaryHeld && isSecondaryHeld == secondaryHeld)
             return;
@@ -139,6 +229,30 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
         UpdateGripPointParents(primaryHeld, secondaryHeld);
         updateLoopActive = primaryHeld || secondaryHeld;
     }
+
+    private int ToGripState(bool isPrimaryHeld, bool isSecondaryHeld)
+    {
+        return (isPrimaryHeld ? (int)UCS_GripState.PrimaryOnly : 0)
+             | (isSecondaryHeld ? (int)UCS_GripState.SecondaryOnly : 0);
+    }
+
+    private bool IsPrimaryFromState(int state) { return (state & (int)UCS_GripState.PrimaryOnly) != 0; }
+
+    private bool IsSecondaryFromState(int state) { return (state & (int)UCS_GripState.SecondaryOnly) != 0; }
+
+    private void TrySendSync()
+    {
+        if (!pendingSync) return;
+        if (Networking.LocalPlayer == null) return;
+        if (!Networking.IsOwner(gameObject)) return;
+        pendingSync = false;
+        RequestSerialization();
+    }
+
+    // Public state accessors so other systems can query how the gun is being held.
+    public bool IsPrimaryHeld() { return primaryHeld; }
+    public bool IsSecondaryHeld() { return secondaryHeld; }
+    public bool IsHeld() { return primaryHeld || secondaryHeld; }
 
     // Grip state machine
     private void OnGripStateChanged(bool wasPrimary, bool wasSecondary, bool isPrimary, bool isSecondary)
@@ -172,21 +286,40 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
             }
         }
 
-        if (primaryGripPickup != null)
-            primaryGripPickup.pickupable = !isPrimary;
-
-        // Allow secondary pickup only when local player owns the primary, or while secondary is held.
-        if (secondaryGripPickup != null)
-        {
-            bool localPlayerHoldsPrimary = isPrimary && primaryGripPickup != null && Networking.IsOwner(primaryGripPickup.gameObject);
-            secondaryGripPickup.pickupable = localPlayerHoldsPrimary || isSecondary;
-        }
+        RefreshGripPickupability();
 
         // Reset look-at only when the gun is fully released.
         if (!isPrimary && !isSecondary)
         {
             followAngles = Vector3.zero;
             followVelocity = Vector3.zero;
+        }
+    }
+
+    // Sets which grips the LOCAL player may grab.
+    //  - The gun holder keeps the primary locked while held and exposes the front
+    //    grip for the second hand / one-to-two-handed transitions.
+    //  - Remote observers lock both grips while anyone is holding, so the gun can't
+    //    be stolen out of someone's hands.
+    private void RefreshGripPickupability()
+    {
+        if (Networking.LocalPlayer == null)
+            return;
+
+        if (primaryGripPickup != null)
+        {
+            bool localOwnsPrimary = Networking.IsOwner(primaryGripPickup.gameObject);
+            if (localOwnsPrimary)
+                primaryGripPickup.pickupable = !primaryHeld;
+            else
+                primaryGripPickup.pickupable = !(primaryHeld || secondaryHeld);
+        }
+
+        if (secondaryGripPickup != null)
+        {
+            bool localHoldsPrimary = primaryHeld && primaryGripPickup != null && Networking.IsOwner(primaryGripPickup.gameObject);
+            bool localHoldsFrontGrip = secondaryHeld && Networking.IsOwner(secondaryGripPickup.gameObject);
+            secondaryGripPickup.pickupable = localHoldsPrimary || localHoldsFrontGrip;
         }
     }
 
@@ -241,7 +374,6 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
 
         primaryGripPickup.transform.SetParent(gunVisual, true);
         SnapPrimaryGripToGunVisual();
-        primaryGripPickup.pickupable = true;
         SetPrimaryGripPhysics(true);
     }
 

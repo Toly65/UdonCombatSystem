@@ -43,7 +43,9 @@ public class UCS_MagSocketAnchor : UdonSharpBehaviour
         UCS_Mag currentMag = magSocket.GetCurrentMag();
         if (currentMag == null)
         {
-            gameObject.SetActive(false);
+            // Do NOT self-disable here. UpdateAnchorState() is the single source of truth for
+            // the anchor's enabled state; self-disabling can leave the anchor stuck off after
+            // a handoff (a code path that never re-runs UpdateAnchorState). Just no-op.
             return;
         }
 

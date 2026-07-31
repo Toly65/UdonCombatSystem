@@ -263,6 +263,29 @@ public class UCS_ComplexGun : UCS_MagFedGun
         }
     }
 
+    public override void OnOwnershipTransferred(VRCPlayerApi player)
+    {
+        // Networking.SetOwner is async: Pickup()/ResolvePostPickupState() can run before
+        // this client actually owns the gun, so the socketed mag never gets handed off
+        // (the mag + socket stay owned by the previous holder and remain ungrabbable).
+        // This is the reliable moment ownership lands, so finalize the mag-socket handoff here.
+        if (player == null || player != Networking.LocalPlayer)
+        {
+            return;
+        }
+
+        if (magSocket != null)
+        {
+            // Re-resolves the socketed mag from the gun's syncedMagazineId (if needed),
+            // transfers the mag + pickup-root ownership to this player, and re-enables the
+            // anchor. SetSocketedMagGunHeld(true) additionally hands the socket GameObject
+            // over so its events / child VRCObjectSync operate for the new owner.
+            magSocket.RefreshSocketedMagFromGunState();
+            bool isHeld = gunPickup != null && gunPickup.IsHeld;
+            magSocket.SetSocketedMagGunHeld(isHeld);
+        }
+    }
+
     private void ApplyRequestedMagFromThisGun()
     {
         if (magBelt == null)
