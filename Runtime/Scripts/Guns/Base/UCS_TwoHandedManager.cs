@@ -1,5 +1,6 @@
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Components;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -59,6 +60,7 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
     private Vector3 secondaryGripGunVisualLocalPosition;
     private Quaternion secondaryGripGunVisualLocalRotation;
     private Rigidbody primaryGripRigidbody;
+    private VRCObjectSync primaryGripObjectSync;
     private bool primaryGripOriginalUseGravity;
     private bool primaryGripOriginalIsKinematic;
     private bool primaryGripOriginalDetectCollisions;
@@ -401,17 +403,47 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
 
         if (anchored)
         {
-            primaryGripRigidbody.useGravity = false;
-            primaryGripRigidbody.isKinematic = true;
+            if (!primaryGripRigidbody.isKinematic)
+            {
+                primaryGripRigidbody.velocity = Vector3.zero;
+                primaryGripRigidbody.angularVelocity = Vector3.zero;
+            }
+            ApplyGripKinematicState(false, true);
             primaryGripRigidbody.detectCollisions = true;
-            primaryGripRigidbody.velocity = Vector3.zero;
-            primaryGripRigidbody.angularVelocity = Vector3.zero;
             return;
         }
 
-        primaryGripRigidbody.useGravity = primaryGripOriginalUseGravity;
-        primaryGripRigidbody.isKinematic = primaryGripOriginalIsKinematic;
+        ApplyGripKinematicState(primaryGripOriginalUseGravity, primaryGripOriginalIsKinematic);
         primaryGripRigidbody.detectCollisions = primaryGripOriginalDetectCollisions;
+    }
+
+    // VRCObjectSync keeps its own copy of the rigidbody's kinematic/gravity state and reverts any
+    // direct write to Rigidbody.isKinematic / .useGravity every update (see the ClientSim warning
+    // "Rigidbody.isKinematic was set outside of VRCObjectSync.SetKinematic method!"). That state is
+    // network-synced, so direct writes only visibly lose against real remote clients. Guarded on the
+    // current value so repeat calls don't re-serialize.
+    private void ApplyGripKinematicState(bool useGravity, bool kinematic)
+    {
+        if (primaryGripObjectSync == null)
+        {
+            primaryGripObjectSync = primaryGripRigidbody.GetComponent<VRCObjectSync>();
+        }
+
+        if (primaryGripRigidbody.useGravity != useGravity)
+        {
+            if (primaryGripObjectSync != null)
+                primaryGripObjectSync.SetGravity(useGravity);
+            else
+                primaryGripRigidbody.useGravity = useGravity;
+        }
+
+        if (primaryGripRigidbody.isKinematic != kinematic)
+        {
+            if (primaryGripObjectSync != null)
+                primaryGripObjectSync.SetKinematic(kinematic);
+            else
+                primaryGripRigidbody.isKinematic = kinematic;
+        }
     }
 
     // Two-handed look-at: rotate `gunVisual` toward the secondary grip.

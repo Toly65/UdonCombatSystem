@@ -1,6 +1,7 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Components;
 using VRC.SDKBase;
 using VRC.Udon;
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
@@ -177,8 +178,22 @@ public class UCS_MagBelt : UdonSharpBehaviour
             {
                 if (beltRigidbodies[i] != null)
                 {
-                    beltRigidbodies[i].useGravity = false;
-                    beltRigidbodies[i].isKinematic = true;
+                    // VRCObjectSync keeps its own copy of the kinematic/gravity state and reverts any
+                    // direct write to Rigidbody.isKinematic / .useGravity every update (see the
+                    // ClientSim warning "Rigidbody.isKinematic was set outside of
+                    // VRCObjectSync.SetKinematic method!"). That state is network-synced, so direct
+                    // writes only visibly lose against real remote clients.
+                    VRCObjectSync sync = beltRigidbodies[i].GetComponent<VRCObjectSync>();
+                    if (sync != null)
+                    {
+                        sync.SetGravity(false);
+                        sync.SetKinematic(true);
+                    }
+                    else
+                    {
+                        beltRigidbodies[i].useGravity = false;
+                        beltRigidbodies[i].isKinematic = true;
+                    }
                 }
             }
         }

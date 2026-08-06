@@ -30,6 +30,15 @@ public class UCS_MagSocket : UdonSharpBehaviour
     private const int MagResolveRetryDelayFrames = 5;
     private int pendingMagResolveRetries;
 
+    // Networking.SetOwner is async, and the OLD owner's stale sync packets can keep overwriting the
+    // mag's isKinematic for a latency-dependent time AFTER the mag becomes ours. This is a short
+    // BOUNDED settle window (delayed events, no per-frame loop — zero cost when idle) that keeps
+    // re-applying the socketed physics through that whole tail, then stops. The pickup child's
+    // OnOwnershipTransferred handles the immediate ownership-landing moment.
+    private const int MaxSocketedKinematicReasserts = 30; // ~1.5s at 0.05s intervals
+    private const float SocketedKinematicReassertInterval = 0.05f;
+    private int pendingSocketedKinematicReasserts;
+
     [SerializeField] private UCS_MagSocketAnchor magSocketAnchor;
 
     // manager responsibilities merged into UCS_Mag; operate directly on the mag
@@ -190,6 +199,75 @@ public class UCS_MagSocket : UdonSharpBehaviour
         }
 
         UpdateAnchorState();
+        ScheduleSocketedKinematicReassert();
+    }
+
+    // Ownership transfer (Networking.SetOwner) is async, and the old owner's stale sync packets can
+    // keep overwriting the mag's isKinematic for a latency-dependent time AFTER the mag becomes ours.
+    // This bounded settle window (delayed events, not a per-frame loop — zero cost when idle) keeps
+    // re-applying the socketed physics through that whole tail, then stops.
+    private void ScheduleSocketedKinematicReassert()
+    {
+        // Only the spawn path (mag not yet owned at insert) has the ownership handoff + stale-sync
+        // tail. A physically inserted mag is already owned by the local player — nothing to settle.
+        if (currentMag == null || IsMagPickupOwnedLocally(currentMag))
+        {
+            pendingSocketedKinematicReasserts = 0;
+            return;
+        }
+
+        pendingSocketedKinematicReasserts = MaxSocketedKinematicReasserts;
+        SendCustomEventDelayedSeconds(nameof(ReassertSocketedKinematic), SocketedKinematicReassertInterval);
+    }
+
+    // Delayed entry point (see ScheduleSocketedKinematicReassert). Re-applies the socketed physics
+    // every interval through the whole settle window — EVEN after the mag becomes ours — because the
+    // old owner's stale VRCObjectSync packets can still flip isKinematic=false for a while. Once the
+    // window expires (or the mag is ejected) it stops and costs nothing.
+    public void ReassertSocketedKinematic()
+    {
+        if (currentMag == null)
+        {
+            pendingSocketedKinematicReasserts = 0;
+            return;
+        }
+
+        if (pendingSocketedKinematicReasserts <= 0)
+        {
+            return;
+        }
+
+        pendingSocketedKinematicReasserts--;
+
+        if (!IsMagPickupOwnedLocally(currentMag))
+        {
+            EnsureGunOwnerOwnsMag(currentMag);
+        }
+        currentMag.ReassertSocketedPhysics();
+
+        if (pendingSocketedKinematicReasserts > 0)
+        {
+            SendCustomEventDelayedSeconds(nameof(ReassertSocketedKinematic), SocketedKinematicReassertInterval);
+        }
+    }
+
+    // Whether the local player owns the pickup child — the object that actually carries the
+    // Rigidbody and VRCObjectSync. This is the ownership that decides whether our kinematic setting
+    // sticks; owning only the mag root is not enough.
+    private bool IsMagPickupOwnedLocally(UCS_Mag mag)
+    {
+        if (mag == null)
+        {
+            return true;
+        }
+
+        Transform pickupRoot = mag.GetPickupRootTransform();
+        if (pickupRoot != null && pickupRoot.gameObject != mag.gameObject)
+        {
+            return Networking.IsOwner(pickupRoot.gameObject);
+        }
+
+        return Networking.IsOwner(mag.gameObject);
     }
 
     public void OnTriggerEnter(Collider other)
@@ -319,22 +397,28 @@ public class UCS_MagSocket : UdonSharpBehaviour
 
         if (currentMag != null)
         {
+            UCS_Mag ejectedMag = currentMag;
             // Let the gun play pull sound / update state, then transfer ammo into the mag so it reflects remaining rounds.
             if (gun != null)
             {
                 gun.NotifyMagazineEjected();
-                gun.TransferAmmoToMag(currentMag);
+                gun.TransferAmmoToMag(ejectedMag);
                 gun.SetInsertedMagId(-1);
             }
 
-            currentMag.SetSocketed(false);
-            currentMag.SetHeld(true);
-            currentMag.SetWorldVisible(true);
+            ejectedMag.SetSocketed(false);
+            ejectedMag.SetHeld(true);
+            ejectedMag.SetWorldVisible(true);
             // re-enable gravity and restore kinematic state on the mag pickup when it's ejected to the world
-            currentMag.SetPickupUseGravity(true);
-            currentMag.SetPickupKinematic(false);
-            currentMag.SetPickupDetectCollisions(true);
-            currentMag.ClearSocket();
+            ejectedMag.SetPickupUseGravity(true);
+            ejectedMag.SetPickupKinematic(false);
+            ejectedMag.SetPickupDetectCollisions(true);
+            ejectedMag.ClearSocket();
+
+            // If this mag is never grabbed again (e.g. swapped out by inserting a fresh mag), it
+            // would otherwise sit in the world forever with isHeld=true and no cleanup timer, and
+            // the pool would never reclaim it. Schedule a safety cleanup.
+            ejectedMag.ScheduleCleanupIfAbandoned();
         }
 
         if (gun != null)

@@ -38,6 +38,48 @@ public class UCS_MagPickup : UdonSharpBehaviour
         }
     }
 
+    // Whether the pickup is currently grabbed by ANY player (synced across clients via
+    // VRC_Pickup.IsHeld). Used by the mag's abandoned-mag cleanup, which must not trust the
+    // local (non-synced) isHeld flag.
+    public bool IsPickupHeld()
+    {
+        if (magPickup == null)
+        {
+            magPickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));
+        }
+        return magPickup != null && magPickup.IsHeld;
+    }
+
+    public override void OnOwnershipTransferred(VRCPlayerApi player)
+    {
+        // This behaviour is on the pickup child — the same GameObject that carries the Rigidbody
+        // and VRCObjectSync. Networking.SetOwner is async, so a freshly inserted mag's pickup child
+        // can stay owned by the old owner (master) for a while; during that window the child's
+        // VRCObjectSync is authoritative for the rigidbody and keeps forcing it non-kinematic. This
+        // is the precise moment the child becomes ours and VRCObjectSync switches to local-authority
+        // — re-apply the socketed physics now so it sticks (and is synced to remote clients).
+        if (player == null || player != Networking.LocalPlayer)
+        {
+            return;
+        }
+
+        if (mag == null)
+        {
+            return;
+        }
+
+        // Use the socket as the source of truth — mag.IsSocketed() can be clobbered by a stale
+        // OnDeserialization (syncedSocketed) during the latency window.
+        UCS_MagSocket socket = mag.GetSocket();
+        bool isSocketed = socket != null && socket.GetCurrentMag() == mag;
+        if (!isSocketed)
+        {
+            return;
+        }
+
+        mag.ReassertSocketedPhysics();
+    }
+
     public override void PostLateUpdate()
     {
         ApplyPickupState();
