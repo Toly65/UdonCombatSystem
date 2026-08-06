@@ -1,7 +1,7 @@
 {
   "name": "com.toly65.udon-combat-system",
   "displayName": "Udon Combat System",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "A combat system for VRChat's Udon",
   "unity": "2022.3",
   "gitDependencies": {},
