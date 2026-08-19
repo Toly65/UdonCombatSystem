@@ -20,16 +20,72 @@ public class UCS_SliderHandler : UdonSharpBehaviour
 
     int ParamSlideStretch = Animator.StringToHash("SlideStretch");
     int ParamSlideLocked = Animator.StringToHash("SlideLocked");
+    int ParamSlideGrabbed = Animator.StringToHash("SlideGrabbed");
+    int ParamSlidePosed = Animator.StringToHash("SlidePosed");
+
+    private bool slideLockedBack = false;
 
     public void LockSlideBack()
     {
+        slideLockedBack = true;
         gunAnimator.SetBool(ParamSlideLocked, true);
     }
 
 
     public void ReleaseSlide()
     {
+        slideLockedBack = false;
         gunAnimator.SetBool(ParamSlideLocked, false);
+    }
+
+    public void SetSlideGrabbed(bool grabbed)
+    {
+        if (gunAnimator != null)
+        {
+            gunAnimator.SetBool(ParamSlideGrabbed, grabbed);
+        }
+    }
+
+    public void SetSlidePosed(bool posed)
+    {
+        if (gunAnimator != null)
+        {
+            gunAnimator.SetBool(ParamSlidePosed, posed);
+        }
+    }
+
+    // Fired by the physbone when a pose is applied. If the posed slide reaches
+    // (or passes) the full-rear threshold the slide is set to the locked state;
+    // if it is posed short of the threshold we release the pose immediately so
+    // the slide does not stick in a partial pose.
+    public override void OnPhysBonePosed(VRC.Dynamics.PhysBonePosedInfo physBoneInfo)
+    {
+        float stretch = physBone != null ? physBone.Stretch : 0f;
+        if (stretch >= fullRearThreshold)
+        {
+            SetSlidePosed(true);
+            LockSlideBack();
+            if (complexGun != null) complexGun.SetSlideLockedFromPose(true);
+        }
+        else
+        {
+            SetSlidePosed(false);
+            ReleaseSlide();
+            if (complexGun != null) complexGun.SetSlideLockedFromPose(false);
+        }
+    }
+
+    // Fired by the physbone when a pose is cleared. A pose that reached the
+    // full-rear threshold keeps the slide locked back; anything else releases
+    // the pose immediately so the slide springs forward.
+    public override void OnPhysBoneUnPosed(VRC.Dynamics.PhysBoneUnPosedInfo physBoneInfo)
+    {
+        if (!slideLockedBack)
+        {
+            SetSlidePosed(false);
+            ReleaseSlide();
+            if (complexGun != null) complexGun.SetSlideLockedFromPose(false);
+        }
     }
 
     // Programmatic simulation helpers for desktop smooth reload visuals
@@ -69,10 +125,17 @@ public class UCS_SliderHandler : UdonSharpBehaviour
         {
             physbonePoller = GetComponentInChildren<UCS_PhysbonePoller>(true);
         }
+
+        if (gunAnimator != null)
+        {
+            gunAnimator.SetBool(ParamSlideGrabbed, false);
+            gunAnimator.SetBool(ParamSlidePosed, false);
+        }
     }
 
     public override void OnPhysBoneGrabbed(VRC.Dynamics.PhysBoneGrabbedInfo physBoneInfo)
     {
+        SetSlideGrabbed(true);
         EnsurePollerActive();
         if (physbonePoller != null)
         {
@@ -82,6 +145,17 @@ public class UCS_SliderHandler : UdonSharpBehaviour
 
     public override void OnPhysBoneReleased(VRC.Dynamics.PhysBoneReleasedInfo physBoneInfo)
     {
+        SetSlideGrabbed(false);
+
+        // Safety net for the grab path: if the slide isn't locked back when the
+        // grab ends, release the pose immediately so the slide springs forward.
+        if (!slideLockedBack)
+        {
+            SetSlidePosed(false);
+            ReleaseSlide();
+            if (complexGun != null) complexGun.SetSlideLockedFromPose(false);
+        }
+
         if (physbonePoller != null)
         {
             physbonePoller.HandlePhysBoneReleased();
@@ -136,6 +210,8 @@ public class UCS_SliderHandler : UdonSharpBehaviour
 
     public void OnGunDropped()
     {
+        SetSlideGrabbed(false);
+        SetSlidePosed(false);
         if (physbonePoller != null)
         {
             physbonePoller.OnGunDropped();

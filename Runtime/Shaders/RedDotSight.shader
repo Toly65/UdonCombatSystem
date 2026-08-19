@@ -74,28 +74,34 @@ Shader "Custom/RedDotSight"
             CGPROGRAM
             #pragma vertex vertMask
             #pragma fragment fragMask
-            #pragma target 3.0
+            #pragma target 3.5
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             struct appdata
             {
                 float4 vertex : POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
             {
                 float4 pos : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vertMask(appdata v)
             {
                 v2f o;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
                 return o;
             }
 
             fixed4 fragMask(v2f i) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
                 return 0;
             }
             ENDCG
@@ -119,7 +125,8 @@ Shader "Custom/RedDotSight"
             CGPROGRAM
             #pragma vertex   vert
             #pragma fragment frag
-            #pragma target   3.0
+            #pragma target   3.5
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             // ---- properties ----
@@ -160,6 +167,7 @@ Shader "Custom/RedDotSight"
             {
                 float4 vertex : POSITION;
                 float2 uv     : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -169,12 +177,15 @@ Shader "Custom/RedDotSight"
                 float3 viewDirObj : TEXCOORD1;
                 float  invAvgWorldScaleXY : TEXCOORD2;
                 float3 localPos : TEXCOORD3;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             // ---- vertex ----
             v2f vert(appdata v)
             {
                 v2f o;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
                 // Remap [0,1] → [-1,1], then correct aspect ratio.
                 float2 uv = v.uv * 2.0 - 1.0;
@@ -232,6 +243,7 @@ Shader "Custom/RedDotSight"
             // ---- fragment ----
             fixed4 frag(v2f i) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
                 float safeHalfX = max(_LensHalfSizeX, 0.0001);
                 float safeHalfY = max(_LensHalfSizeY, 0.0001);
                 float2 pBase = float2(i.localPos.x / safeHalfX,

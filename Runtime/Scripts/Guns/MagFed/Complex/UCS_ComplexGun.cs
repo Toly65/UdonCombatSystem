@@ -23,8 +23,12 @@ public class UCS_ComplexGun : UCS_MagFedGun
     [SerializeField] private float desktopMagEjectDuration = 0.25f;
     [SerializeField] private GameObject magazineVisualRoot;
     [SerializeField] private Transform magazinePickupAnchor;
+
+    [Tooltip("Automatically lock the slide open when the gun runs out of ammo (bolt-catch / last-round hold-open). Disable for guns like the G3 whose slide closes on empty.")]
+    [SerializeField] private bool autoLockSlideOnEmpty = true;
     
     bool slideLockedBack = false;
+    bool slideLockedFromPose = false; // locked back by a physbone pose (holds the slide open even with ammo)
     bool slideCycleNeedsChamber = false;
 
     int ParamIsFiring     = Animator.StringToHash("IsFiring");
@@ -643,17 +647,20 @@ public class UCS_ComplexGun : UCS_MagFedGun
         playerPulledSlideBack = slideBeingHeld;
 
         //locking
-        if(CurrentAmmo <= 0 && !slideBeingHeld)
+        if(autoLockSlideOnEmpty && CurrentAmmo <= 0 && !slideBeingHeld)
         {
             //this is the automatic slide open when ammo runs out, so we lock the slide back until the player releases it
+            //(disabled for guns like the G3 that don't hold open on empty)
             slideLockedBack = true;
+            slideLockedFromPose = false;
             if (sliderHandler != null) sliderHandler.LockSlideBack();
         }
 
         //unlocking
-        if(slideBeingHeld && slideLockedBack)
+        if(slideBeingHeld && slideLockedBack && !slideLockedFromPose)
         {
             //if the player pulled the slide back while it was locked, we unlock it immediately so that it can spring forward as soon as they let go
+            //(pose-locks are only cleared via the slide release button, not by racking)
             slideLockedBack = false;
             if (GunAnimator != null)
             {
@@ -690,9 +697,11 @@ public class UCS_ComplexGun : UCS_MagFedGun
     {
         base.ConsumeFiredRound();
         bool isLastRound = CurrentAmmo <= 0;
+        // Guns without a slide hold-open (e.g. G3) don't lock on the final shot.
+        bool locksOnEmpty = isLastRound && autoLockSlideOnEmpty;
         if (GunAnimator != null)
         {
-            GunAnimator.SetBool(ParamIsFiringLock, isLastRound);
+            GunAnimator.SetBool(ParamIsFiringLock, locksOnEmpty);
             GunAnimator.SetBool(ParamIsFiring, !isLastRound);
 
             // Fallback for controllers that are missing FireCycleLayer transitions.
@@ -703,7 +712,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
             if (fireCycleLayerIndex >= 0)
             {
-                int stateHash = isLastRound ? StateFireCycleLock : StateFireCycle;
+                int stateHash = locksOnEmpty ? StateFireCycleLock : StateFireCycle;
                 if (GunAnimator.HasState(fireCycleLayerIndex, stateHash))
                 {
                     GunAnimator.Play(stateHash, fireCycleLayerIndex, 0f);
@@ -711,7 +720,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
             }
         }
         SendCustomEventDelayedSeconds(nameof(EndFireCycle), CycleTime);
-        if (isLastRound)
+        if (locksOnEmpty)
             SendCustomEventDelayedSeconds(nameof(LockSlideAfterCycle), CycleTime);
     }
 
@@ -739,12 +748,32 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (sliderHandler != null) sliderHandler.LockSlideBack();
     }
 
+    // Called by UCS_SliderHandler when a physbone pose locks/unlocks the slide.
+    // This lets the gun detect (and block firing for) a slide that is held open
+    // by a pose even when ammo is still present. Releasing only clears the lock
+    // if it actually came from a pose (auto-open / last-round locks are handled
+    // by their own release paths).
+    public void SetSlideLockedFromPose(bool locked)
+    {
+        if (locked)
+        {
+            slideLockedBack = true;
+            slideLockedFromPose = true;
+        }
+        else if (slideLockedFromPose)
+        {
+            slideLockedBack = false;
+            slideLockedFromPose = false;
+        }
+    }
+
     public void OnSlideReleasePressed()
     {
         //called when the player presses the button to release the slide, allowing it to spring forward if it's locked back
         if (slideLockedBack)
         {
             slideLockedBack = false;
+            slideLockedFromPose = false;
             if (GunAnimator != null)
             {
                 GunAnimator.SetBool(ParamIsFiringLock, false);
@@ -788,6 +817,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         bulletInChamberWasFired = false;
         needsReload = true;
         slideLockedBack = false;
+        slideLockedFromPose = false;
         slideCycleNeedsChamber = false;
         UpdateBulletVisibility(false);
         SetMagazineInserted(false);
