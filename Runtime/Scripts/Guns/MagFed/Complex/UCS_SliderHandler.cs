@@ -38,6 +38,20 @@ public class UCS_SliderHandler : UdonSharpBehaviour
         gunAnimator.SetBool(ParamSlideLocked, false);
     }
 
+    // Manually latch the charging handle to the locked (rear) position. Goes
+    // through LockSlideBack so the shared SlideLocked bool drives the animator to
+    // the locked state on both the slide layer and the charge-handle grab layer.
+    public void LockChargeHandle()
+    {
+        LockSlideBack();
+    }
+
+    // Release a manually locked charging handle so it springs forward.
+    public void ReleaseChargeHandle()
+    {
+        ReleaseSlide();
+    }
+
     public void SetSlideGrabbed(bool grabbed)
     {
         if (gunAnimator != null)
