@@ -162,6 +162,13 @@ public class UCS_PhysbonePoller : UdonSharpBehaviour
 
     private void ProcessThresholdEvents()
     {
+        // While the slide/bolt is latched open the handle is free to travel on its own
+        // (an M4-style charging handle springs forward the moment you let go, and the
+        // desktop sim sends it home too). Its falling stretch must not close the bolt:
+        // only the slide release does that. Rising edges are left alone so racking a
+        // locked slide still unlocks it.
+        bool lockedOpen = sliderHandler != null && sliderHandler.IsSlideLockedBack();
+
         if (!passedEjectionThreshold && currentStretch >= ejectionThreshold)
         {
             complexGun.OnEjectionThresholdCrossed();
@@ -170,7 +177,10 @@ public class UCS_PhysbonePoller : UdonSharpBehaviour
         else if (passedEjectionThreshold && currentStretch < ejectionThreshold)
         {
             passedEjectionThreshold = false;
-            complexGun.OnSlideInsertionThesholdCrossed();
+            if (!lockedOpen)
+            {
+                complexGun.OnSlideInsertionThesholdCrossed();
+            }
         }
 
         if (currentStretch >= fullRearThreshold && !passedFullRearThreshold)
@@ -181,9 +191,12 @@ public class UCS_PhysbonePoller : UdonSharpBehaviour
         }
         else if (previousStretch > 0.05f && currentStretch <= 0.05f && passedFullRearThreshold && !slideForwardEventFired)
         {
-            complexGun.OnSlideForward();
             passedFullRearThreshold = false;
             slideForwardEventFired = true;
+            if (!lockedOpen)
+            {
+                complexGun.OnSlideForward();
+            }
         }
     }
 }

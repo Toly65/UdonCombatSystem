@@ -86,9 +86,15 @@ public class UCS_ComplexGun : UCS_MagFedGun
         }
     }
 
-    private void Update()
+    // Desktop reload input used to be polled every frame in Update(); that loop ticked even
+    // when no relevant player was holding the gun. It is now a self-rescheduling delayed
+    // event that only starts (and keeps running) while the local player is a desktop user
+    // holding the gun. desktopReloadPolling guards against duplicate poll loops.
+    private bool desktopReloadPolling = false;
+
+    private void StartDesktopReloadPolling()
     {
-        if (!desktopReloadCompatibility)
+        if (!desktopReloadCompatibility || desktopReloadPolling)
         {
             return;
         }
@@ -99,10 +105,38 @@ public class UCS_ComplexGun : UCS_MagFedGun
             return;
         }
 
+        desktopReloadPolling = true;
+        PollDesktopReload();
+    }
+
+    public void PollDesktopReload()
+    {
+        if (!desktopReloadPolling)
+        {
+            // Stale tick from a loop that was already stopped - drop it.
+            return;
+        }
+
+        if (!desktopReloadCompatibility)
+        {
+            desktopReloadPolling = false;
+            return;
+        }
+
+        GetPickupOwner();
+        if (Networking.LocalPlayer == null || Networking.LocalPlayer.IsUserInVR() || gunPickup == null || !gunPickup.IsHeld || cachedPickupOwner != Networking.LocalPlayer)
+        {
+            // No longer a desktop player holding the gun - stop polling.
+            desktopReloadPolling = false;
+            return;
+        }
+
         if (Input.GetKeyDown(desktopReloadKey))
         {
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(PerformDesktopReload));
         }
+
+        SendCustomEventDelayedFrames(nameof(PollDesktopReload), 1);
     }
 
     public void PerformDesktopReload()
@@ -123,10 +157,58 @@ public class UCS_ComplexGun : UCS_MagFedGun
         StartReload();
         RequestSerialization();
 
-        // schedule magazine swap and slide finish across the reload duration
+        // The desktop reload runs as a staged sequence so it reads like the VR flow:
+        // grab the charging handle -> pull the slide back -> lock it open -> swap the
+        // mag -> release the lock so the slide springs forward and chambers a round.
+        //
+        // Phase 1 - grab the charging handle and pull the slide back (on all clients).
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(NetworkedDesktopGrabAndPullBack));
+
+        // Phase 2 - lock the slide open once it is fully rear, before the mag is swapped.
         float swapTime = ReloadTime / 2f;
-        SendCustomEventDelayedSeconds("DesktopPerformMagSwap", swapTime);
-        SendCustomEventDelayedSeconds("DesktopFinishSlideRack", ReloadTime);
+        float lockTime = Mathf.Min(desktopSlideAnimDuration, swapTime);
+        SendCustomEventDelayedSeconds(nameof(DesktopLockSlideOpen), lockTime);
+
+        // Phase 3 - swap the mag while the slide is locked open.
+        SendCustomEventDelayedSeconds(nameof(DesktopPerformMagSwap), swapTime);
+
+        // Phase 4 - release the lock, spring the slide forward, chamber, complete.
+        SendCustomEventDelayedSeconds(nameof(DesktopFinishSlideRack), ReloadTime);
+    }
+
+    // Local delayed stub for Phase 2 - re-broadcasts the lock so every client shows the
+    // slide latching into the locked (rear) position before the mag is swapped.
+    public void DesktopLockSlideOpen()
+    {
+        if (!IsPickupOwner())
+        {
+            return;
+        }
+
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(NetworkedDesktopLockSlideOpen));
+    }
+
+    public void NetworkedDesktopLockSlideOpen()
+    {
+        if (sliderHandler != null)
+        {
+            sliderHandler.SimulateLockSlideOpen();
+        }
+    }
+
+    // Phase 1 (all clients): simulate grabbing the charging handle and pulling the slide
+    // back, mirroring what a VR player does physically with the physbone.
+    public void NetworkedDesktopGrabAndPullBack()
+    {
+        if (sliderHandler != null)
+        {
+            sliderHandler.SimulateGrabChargeHandle();
+            sliderHandler.SimulatePullBack(desktopSlideAnimDuration);
+        }
+        if (firemechanicsAudioSource != null && slideBackSound != null)
+        {
+            firemechanicsAudioSource.PlayOneShot(slideBackSound);
+        }
     }
 
     public void DesktopPerformMagSwap()
@@ -139,19 +221,6 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (magSocket != null)
         {
             magSocket.ReloadMagDelayed(desktopMagEjectDuration);
-        }
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(NetworkedDesktopSlideBack));
-    }
-
-    public void NetworkedDesktopSlideBack()
-    {
-        if (sliderHandler != null)
-        {
-            sliderHandler.SimulatePullBack(desktopSlideAnimDuration);
-        }
-        if (firemechanicsAudioSource != null && slideBackSound != null)
-        {
-            firemechanicsAudioSource.PlayOneShot(slideBackSound);
         }
     }
 
@@ -190,6 +259,8 @@ public class UCS_ComplexGun : UCS_MagFedGun
     {
         if (sliderHandler != null)
         {
+            // Release the simulated charging-handle grab, then let the slide spring forward.
+            sliderHandler.SimulateReleaseChargeHandle();
             sliderHandler.SimulateRelease(desktopSlideAnimDuration);
         }
         if (firemechanicsAudioSource != null && slideForwardSound != null)
@@ -269,6 +340,8 @@ public class UCS_ComplexGun : UCS_MagFedGun
             magSocket.RefreshSocketedMagFromGunState();
             magSocket.SetSocketedMagGunHeld(true);
         }
+
+        StartDesktopReloadPolling();
     }
 
     public override void OnOwnershipTransferred(VRCPlayerApi player)
@@ -292,6 +365,10 @@ public class UCS_ComplexGun : UCS_MagFedGun
             bool isHeld = gunPickup != null && gunPickup.IsHeld;
             magSocket.SetSocketedMagGunHeld(isHeld);
         }
+
+        // Ownership is now settled on the local player, so (re)start the desktop reload
+        // polling loop if this is a desktop player holding the gun.
+        StartDesktopReloadPolling();
     }
 
     private void ApplyRequestedMagFromThisGun()
@@ -373,20 +450,26 @@ public class UCS_ComplexGun : UCS_MagFedGun
         return TrySetRequestedMagFromHeldGun(VRC_Pickup.PickupHand.Right);
     }
 
-
+ 
 
     public override void Drop()
     {
         GetPickupOwner();
-        bool useMagBelt = cachedPickupOwner != null && cachedPickupOwner.IsUserInVR() && magBelt != null;
-
-        if (useMagBelt)
+        // Use Utilities.IsValid instead of a raw null check: if the player holding the gun
+        // has disconnected, cachedPickupOwner can be a stale, non-null but invalid
+        // VRCPlayerApi reference, and calling IsUserInVR() on it would crash the script.
+        if(Utilities.IsValid(cachedPickupOwner))
         {
-            if (!TrySetRequestedMagFromOtherHeldGun())
+            bool useMagBelt = cachedPickupOwner.IsUserInVR() && magBelt != null;
+            if (useMagBelt)
             {
-                magBelt.ClearRequestedMag();
+                if (!TrySetRequestedMagFromOtherHeldGun())
+                {
+                    magBelt.ClearRequestedMag();
+                }
             }
         }
+       
 
         if (magSocket != null)
         {
@@ -398,6 +481,12 @@ public class UCS_ComplexGun : UCS_MagFedGun
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(NotifySliderGunDropped));
         }
 
+        // Stop the desktop reload polling loop now that the gun is no longer held.
+        desktopReloadPolling = false;
+        // If the player dropped the gun mid-reload, DesktopFinishSlideRack would have
+        // returned early on !IsPickupOwner() and never cleared this - reset it so the
+        // next pickup isn't stuck with a blocked reload.
+        desktopReloadBlocked = false;
         ClearCachedPickupOwner();
     }
 
@@ -499,7 +588,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         {
             lastLoggedSyncedMagazineId = syncedMagazineId;
             lastLoggedGunOwnerId = ownerId;
-            Debug.Log($"[UCS_ComplexGun] OnDeserialization gun={gameObject.name} syncedMagazineId={syncedMagazineId} owner={ownerId}");
+            //Debug.Log($"[UCS_ComplexGun] OnDeserialization gun={gameObject.name} syncedMagazineId={syncedMagazineId} owner={ownerId}");
         }
         if (magazineVisualRoot != null)
         {
@@ -596,7 +685,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         {
             slideBeingHeld = slidePhysBone.IsGrabbed;
         }
-        Debug.Log($"[UCS auto] ComplexGun.TriggerPull name={gameObject.name} slideLockedBack={slideLockedBack} slideBeingHeld={slideBeingHeld}");
+        //Debug.Log($"[UCS auto] ComplexGun.TriggerPull name={gameObject.name} slideLockedBack={slideLockedBack} slideBeingHeld={slideBeingHeld}");
         if (slideLockedBack || slideBeingHeld)
         {
             //if the slide is locked back, or held back by the player, we don't allow firing
@@ -711,8 +800,9 @@ public class UCS_ComplexGun : UCS_MagFedGun
         bool locksOnEmpty = isLastRound && autoLockSlideOnEmpty;
         if (GunAnimator != null)
         {
-            GunAnimator.SetBool(ParamIsFiringLock, locksOnEmpty);
-            GunAnimator.SetBool(ParamIsFiring, !isLastRound);
+            // IsFiringLock is a held state (the slide stays locked); IsFiring is a one-shot.
+            if (locksOnEmpty) GunAnimator.SetBool(ParamIsFiringLock, true);
+            else GunAnimator.SetTrigger(ParamIsFiring);
 
             // Fallback for controllers that are missing FireCycleLayer transitions.
             if (fireCycleLayerIndex == -2)
@@ -738,8 +828,6 @@ public class UCS_ComplexGun : UCS_MagFedGun
     {
         if (GunAnimator != null)
         {
-            GunAnimator.SetBool(ParamIsFiring, false);
-
             if (fireCycleLayerIndex == -2)
             {
                 fireCycleLayerIndex = GunAnimator.GetLayerIndex("FireCycleLayer");
@@ -821,6 +909,10 @@ public class UCS_ComplexGun : UCS_MagFedGun
             }
             if (sliderHandler != null) sliderHandler.ReleaseSlide();
             OnSlideForward();
+            // The handle may already be home (separate charging handle), so there is no
+            // falling stretch left to chamber off. Idempotent - slideCycleNeedsChamber
+            // guards the double call on guns whose slide really does travel here.
+            OnSlideInsertionThesholdCrossed();
         }
     }
    public void DumpMagazine()

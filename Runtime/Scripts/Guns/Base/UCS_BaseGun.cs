@@ -160,7 +160,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
 
     protected virtual void Start()
     {
-        Debug.Log($"[UCS auto] Start name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
+       // Debug.Log($"[UCS auto] Start name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
         screenCamera = VRCCameraSettings.ScreenCamera;
 
         // compute cycle time from RPM (seconds per shot)
@@ -190,7 +190,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
 
     public virtual void TriggerPull()
     {
-        Debug.Log($"[UCS auto] base.TriggerPull name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
+        //Debug.Log($"[UCS auto] base.TriggerPull name={gameObject.name} FireMode={FireMode} bulletChambered={bulletChambered} isReloading={isReloading} InfiniteAmmo={InfiniteAmmo} InfiniteMagazine={InfiniteMagazine} CurrentAmmo={CurrentAmmo}");
         // only fire when a chambered round is available
         if ((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)
         {
@@ -254,7 +254,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     private bool isAutoFiring = false;//no need to sync this since they are called via network events
     public void StartAuto()
     {
-        Debug.Log($"[UCS auto] StartAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} owner={IsPickupOwner()}");
+        //Debug.Log($"[UCS auto] StartAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} owner={IsPickupOwner()}");
         if (isAutoFiring)
         {
             return;
@@ -283,7 +283,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     }
     public void FireAuto()
     {
-        Debug.Log($"[UCS auto] FireAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} cooldownReady={IsFireCooldownReady()}");
+        //Debug.Log($"[UCS auto] FireAuto name={gameObject.name} isAutoFiring={isAutoFiring} isReloading={isReloading} bulletChambered={bulletChambered} CurrentAmmo={CurrentAmmo} cooldownReady={IsFireCooldownReady()}");
         if (!isAutoFiring || isReloading)
         {
             return;
@@ -331,7 +331,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     {
         if (GunAnimator != null)
         {
-            GunAnimator.SetBool("IsFiring", false);
+            GunAnimator.ResetTrigger("IsFiring");
         }
     }
 
@@ -463,7 +463,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
     int burstShotsRemaining;
     public void FireGun()
     {
-        Debug.Log($"[UCS auto] FireGun name={gameObject.name} willFire={((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)} bulletChambered={bulletChambered} isReloading={isReloading} CurrentAmmo={CurrentAmmo}");
+        //Debug.Log($"[UCS auto] FireGun name={gameObject.name} willFire={((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)} bulletChambered={bulletChambered} isReloading={isReloading} CurrentAmmo={CurrentAmmo}");
         //to do: implement burst logic
         if((InfiniteAmmo || InfiniteMagazine || bulletChambered) && !isReloading)
         {
@@ -548,9 +548,9 @@ public class UCS_BaseGun : UdonSharpBehaviour
             if (GunAnimator != null)
             {
                 bool shouldUseFireLock = !InfiniteAmmo && !InfiniteMagazine && CurrentAmmo <= 1;
-                GunAnimator.SetBool("IsFiringLock", shouldUseFireLock);
-                GunAnimator.SetBool("IsFiring", !shouldUseFireLock);
-                SendCustomEventDelayedSeconds("NetworkedEndFireCycle", CycleTime);
+                // IsFiringLock is a held state (the slide stays locked); IsFiring is a one-shot.
+                if (shouldUseFireLock) GunAnimator.SetBool("IsFiringLock", true);
+                else GunAnimator.SetTrigger("IsFiring");
             }
 
             //play fire sound

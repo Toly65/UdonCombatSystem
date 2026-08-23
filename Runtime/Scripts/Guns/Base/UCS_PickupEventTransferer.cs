@@ -27,7 +27,7 @@ public class UCS_PickupEventTransferer : UdonSharpBehaviour
     }
     public override void OnPickupUseDown()
     {
-        Debug.Log($"[UCS auto] OnPickupUseDown transferer={gameObject.name} event={pickupUseDownEvent} targetNull={targetBehaviour == null}");
+        //Debug.Log($"[UCS auto] OnPickupUseDown transferer={gameObject.name} event={pickupUseDownEvent} targetNull={targetBehaviour == null}");
         targetBehaviour.SendCustomEvent(pickupUseDownEvent);
     }
 

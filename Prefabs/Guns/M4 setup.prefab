@@ -8969,6 +8969,8 @@ MonoBehaviour:
   desktopMagEjectDuration: 0.25
   magazineVisualRoot: {fileID: 827649901424214468}
   magazinePickupAnchor: {fileID: 1136894658801673334}
+  autoLockSlideOnEmpty: 1
+  manualSlideLockOnly: 0
 --- !u!114 &8550145027129508885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12621,14 +12623,14 @@ MonoBehaviour:
   m_Script: {fileID: 1661641543, guid: 2a2c05204084d904aa4945ccff20d8e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  foldout_transforms: 1
-  foldout_forces: 1
-  foldout_collision: 1
-  foldout_stretchsquish: 1
-  foldout_limits: 1
-  foldout_grabpose: 1
-  foldout_options: 1
-  foldout_gizmos: 1
+  foldout_transforms: 0
+  foldout_forces: 0
+  foldout_collision: 0
+  foldout_stretchsquish: 0
+  foldout_limits: 0
+  foldout_grabpose: 0
+  foldout_options: 0
+  foldout_gizmos: 0
   version: 1
   integrationType: 0
   rootTransform: {fileID: 0}
@@ -12792,6 +12794,7 @@ MonoBehaviour:
   complexGun: {fileID: 473577306561223275}
   physbonePoller: {fileID: 6049959455598162358}
   simDuration: 0.12
+  separateChargingHandle: 1
   ejectionThreshold: 0.35
   fullRearThreshold: 0.95
 --- !u!114 &6122422043883215031

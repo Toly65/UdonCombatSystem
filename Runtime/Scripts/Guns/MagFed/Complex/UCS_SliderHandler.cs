@@ -15,6 +15,11 @@ public class UCS_SliderHandler : UdonSharpBehaviour
     [SerializeField] private UCS_PhysbonePoller physbonePoller;
     [SerializeField] private float simDuration = 0.12f;
 
+    // M4-style guns: the bolt latches open but the charging handle is a separate part
+    // that springs home. Ticking this stops the handle being held at the rear by a pose
+    // or by the desktop sim once the gun is locked - the locked clip holds the bolt.
+    [SerializeField] private bool separateChargingHandle = false;
+
     [SerializeField] private float ejectionThreshold = 0.35f;
     [SerializeField] private float fullRearThreshold = 0.95f;
 
@@ -29,6 +34,23 @@ public class UCS_SliderHandler : UdonSharpBehaviour
     {
         slideLockedBack = true;
         gunAnimator.SetBool(ParamSlideLocked, true);
+
+        if (separateChargingHandle)
+        {
+            // Send the handle home. The poller ignores the falling stretch while the
+            // gun is locked, so nothing chambers on the way back.
+            SetSlidePosed(false);
+            EnsurePollerActive();
+            if (physbonePoller != null)
+            {
+                physbonePoller.BeginSimulation(0f, Mathf.Max(0.01f, simDuration), false);
+            }
+        }
+    }
+
+    public bool IsSlideLockedBack()
+    {
+        return slideLockedBack;
     }
 
 
@@ -139,6 +161,51 @@ public class UCS_SliderHandler : UdonSharpBehaviour
         if (physbonePoller != null)
         {
             physbonePoller.BeginSimulation(0f, Mathf.Max(0.01f, duration), false);
+        }
+    }
+
+    // Desktop simulation: mirror a VR player grabbing the charging handle without an
+    // actual physbone grab, so the grab layer, gun, and poller behave like the real grab.
+    public void SimulateGrabChargeHandle()
+    {
+        SetSlideGrabbed(true);
+        if (complexGun != null)
+        {
+            complexGun.OnSlideGrabbed();
+        }
+        EnsurePollerActive();
+        if (physbonePoller != null)
+        {
+            physbonePoller.HandlePhysBoneGrabbed();
+        }
+    }
+
+    // Desktop simulation: release the simulated charging-handle grab.
+    public void SimulateReleaseChargeHandle()
+    {
+        SetSlideGrabbed(false);
+        if (complexGun != null)
+        {
+            complexGun.OnSlideReleased();
+        }
+        if (physbonePoller != null)
+        {
+            physbonePoller.HandlePhysBoneReleased();
+        }
+    }
+
+    // Desktop simulation: latch the slide/handle into its notch (bolt catch) so the mag
+    // can be swapped without the player holding the slide open. Goes through the gun's
+    // manual-lock path so shared lock state (slideLockedBack / SlideLocked animator) is set.
+    public void SimulateLockSlideOpen()
+    {
+        if (complexGun != null)
+        {
+            complexGun.LockSlideManually();
+        }
+        else
+        {
+            LockSlideBack();
         }
     }
 
