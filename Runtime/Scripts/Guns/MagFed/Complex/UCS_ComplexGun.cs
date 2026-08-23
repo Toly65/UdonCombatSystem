@@ -27,7 +27,11 @@ public class UCS_ComplexGun : UCS_MagFedGun
     [Tooltip("Automatically lock the slide open when the gun runs out of ammo (bolt-catch / last-round hold-open). Disable for guns like the G3 whose slide closes on empty.")]
     [SerializeField] private bool autoLockSlideOnEmpty = true;
     
+    [Tooltip("G3-style: the slide never auto-locks, only the player can latch it, and it unlocks the next time they grab it.")]
+    [SerializeField] private bool manualSlideLockOnly = false;
+
     bool slideLockedBack = false;
+    bool slideLockSettled = false; // manual-lock guns: player has let go since latching
     bool slideLockedFromPose = false; // locked back by a physbone pose (holds the slide open even with ammo)
     bool slideCycleNeedsChamber = false;
 
@@ -621,6 +625,11 @@ public class UCS_ComplexGun : UCS_MagFedGun
 
         if (IsPickupOwner())
         {
+            if (!bulletInChamberWasFired)
+            {
+                // live round hits the dirt - it leaves the gun's total count with it
+                CurrentAmmo = Mathf.Max(CurrentAmmo - 1, 0);
+            }
             bulletChambered = false;
             bulletInChamberWasFired = false;
             needsReload = CurrentAmmo <= 0;
@@ -647,17 +656,18 @@ public class UCS_ComplexGun : UCS_MagFedGun
         playerPulledSlideBack = slideBeingHeld;
 
         //locking
-        if(autoLockSlideOnEmpty && CurrentAmmo <= 0 && !slideBeingHeld)
+        if(autoLockSlideOnEmpty && CurrentAmmo <= 0 && !slideBeingHeld && !manualSlideLockOnly)
         {
             //this is the automatic slide open when ammo runs out, so we lock the slide back until the player releases it
             //(disabled for guns like the G3 that don't hold open on empty)
             slideLockedBack = true;
+            slideLockSettled = false;
             slideLockedFromPose = false;
             if (sliderHandler != null) sliderHandler.LockSlideBack();
         }
 
         //unlocking
-        if(slideBeingHeld && slideLockedBack && !slideLockedFromPose)
+        if(slideBeingHeld && slideLockedBack && !slideLockedFromPose && !manualSlideLockOnly)
         {
             //if the player pulled the slide back while it was locked, we unlock it immediately so that it can spring forward as soon as they let go
             //(pose-locks are only cleared via the slide release button, not by racking)
@@ -742,9 +752,39 @@ public class UCS_ComplexGun : UCS_MagFedGun
         }
     }
 
+    // Called by whatever the player uses to latch the slide/handle into its notch.
+    public void LockSlideManually()
+    {
+        if (!slideLockedBack)
+        {
+            LockSlideAfterCycle();
+        }
+    }
+
+    // Manual-lock guns unlock on the next grab, but only once the player has let go
+    // of the latched slide - otherwise the grab that latched it would undo it.
+    public void OnSlideGrabbed()
+    {
+        if (manualSlideLockOnly && slideLockedBack && slideLockSettled)
+        {
+            OnSlideReleasePressed();
+        }
+    }
+
+    public void OnSlideReleased()
+    {
+        if (slideLockedBack)
+        {
+            slideLockSettled = true;
+        }
+    }
+
     public void LockSlideAfterCycle()
     {
         slideLockedBack = true;
+        // if nobody is holding the slide, the latch is settled already - otherwise the
+        // grab that latched it would immediately undo it, so wait for the release.
+        slideLockSettled = slidePhysBone == null || !slidePhysBone.IsGrabbed;
         if (sliderHandler != null) sliderHandler.LockSlideBack();
     }
 
@@ -773,6 +813,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (slideLockedBack)
         {
             slideLockedBack = false;
+            slideLockSettled = false;
             slideLockedFromPose = false;
             if (GunAnimator != null)
             {
@@ -817,6 +858,7 @@ public class UCS_ComplexGun : UCS_MagFedGun
         bulletInChamberWasFired = false;
         needsReload = true;
         slideLockedBack = false;
+        slideLockSettled = false;
         slideLockedFromPose = false;
         slideCycleNeedsChamber = false;
         UpdateBulletVisibility(false);

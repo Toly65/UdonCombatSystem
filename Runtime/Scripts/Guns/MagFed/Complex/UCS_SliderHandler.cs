@@ -46,6 +46,15 @@ public class UCS_SliderHandler : UdonSharpBehaviour
         LockSlideBack();
     }
 
+    // Latch the slide/handle into its notch (manual-lock guns, e.g. G3).
+    public void ManualLockSlide()
+    {
+        if (complexGun != null)
+        {
+            complexGun.LockSlideManually();
+        }
+    }
+
     // Release a manually locked charging handle so it springs forward.
     public void ReleaseChargeHandle()
     {
@@ -150,6 +159,10 @@ public class UCS_SliderHandler : UdonSharpBehaviour
     public override void OnPhysBoneGrabbed(VRC.Dynamics.PhysBoneGrabbedInfo physBoneInfo)
     {
         SetSlideGrabbed(true);
+        if (complexGun != null)
+        {
+            complexGun.OnSlideGrabbed();
+        }
         EnsurePollerActive();
         if (physbonePoller != null)
         {
@@ -160,6 +173,10 @@ public class UCS_SliderHandler : UdonSharpBehaviour
     public override void OnPhysBoneReleased(VRC.Dynamics.PhysBoneReleasedInfo physBoneInfo)
     {
         SetSlideGrabbed(false);
+        if (complexGun != null)
+        {
+            complexGun.OnSlideReleased();
+        }
 
         // Safety net for the grab path: if the slide isn't locked back when the
         // grab ends, release the pose immediately so the slide springs forward.
