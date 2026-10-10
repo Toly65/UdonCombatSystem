@@ -52,6 +52,28 @@ public class UCS_BaseGun : UdonSharpBehaviour
     [SerializeField] private float ProjectileSpeed = 50f;
     [SerializeField] private float ProjectileSpreadAngle = 5f;
 
+    [Header("Simulated Projectile Settings")]
+    // Ballistic bullets stepped with a raycast per frame: travel time + gravity, no Rigidbody/collider.
+    [SerializeField] private bool SimulatedProjectiles = false;
+    [SerializeField] private float SimulatedProjectileSpeed = 150f;
+    [SerializeField] private float SimulatedGravityMultiplier = 1f;
+    [SerializeField] private float SimulatedProjectileLifetime = 3f;
+    [Tooltip("Max bullets in flight for this gun; the oldest is recycled when full")]
+    [SerializeField] private int MaxSimulatedProjectiles = 32;
+    [Tooltip("LineRenderer (world space, 2 points) cloned once per in-flight slot. Optional.")]
+    [SerializeField] private LineRenderer TracerTemplate;
+    [Tooltip("1 = every round is a tracer, 3 = every 3rd round, 0 = no tracers")]
+    [SerializeField] private int TracerEveryNthRound = 3;
+
+    [Header("Bullet Audio")]
+    [Tooltip("3D AudioSource cloned into a small voice pool for impact / whizz sounds. Optional.")]
+    [SerializeField] private AudioSource BulletAudioTemplate;
+    [SerializeField] private int BulletAudioVoices = 6;
+    [SerializeField] private AudioClip[] SurfaceImpactSounds;
+    [Tooltip("Played when someone else's simulated bullet passes near your head")]
+    [SerializeField] private AudioClip[] WhizzSounds;
+    [SerializeField] private float WhizzRadius = 2.5f;
+
     // computed from RoundsPerMinute in Start()
     protected float CycleTime = 0.0f;
 
@@ -77,6 +99,8 @@ public class UCS_BaseGun : UdonSharpBehaviour
     [SerializeField] protected AudioSource magazineAudioSource;
     [SerializeField] protected AudioSource firemechanicsAudioSource;
     [SerializeField] protected AudioClip FireSound;
+    [Tooltip("Gunshot reaches distant listeners after distance / this (m/s). 343 = real air, 0 = instant")]
+    [SerializeField] private float SpeedOfSound = 343f;
     [SerializeField] protected AudioClip EmptyFireSound;
     [SerializeField] protected AudioClip magpullSound;
     [SerializeField] protected AudioClip maginsertSound;
@@ -151,6 +175,11 @@ public class UCS_BaseGun : UdonSharpBehaviour
     {
         cachedPickupOwner = null;
     }
+
+    // Read-only ammo state for HUDs. Capacity is 0 for feeds without a fixed magazine.
+    public int GetAmmoCount() { return CurrentAmmo; }
+    public virtual int GetAmmoCapacity() { return 0; }
+    public bool HasInfiniteAmmo() { return InfiniteAmmo || InfiniteMagazine; }
 
     // Public accessor for other systems (mag sockets, belt, etc.) to query the gun's pickup owner.
     public VRCPlayerApi GetCachedPickupOwner()
@@ -381,6 +410,218 @@ public class UCS_BaseGun : UdonSharpBehaviour
         return desktopForward;
     }
 
+    private Vector3[] simPos;
+    private Vector3[] simVel;
+    private float[] simDieTime;
+    private bool[] simActive;
+    private LineRenderer[] simTracers;
+    private int simNext = 0;
+    private int simRoundCounter = 0;
+    private bool[] simCanWhizz;
+    private AudioSource[] bulletVoices;
+    private int bulletVoiceNext = 0;
+
+    private void PlayBulletSound(AudioClip[] clips, Vector3 position)
+    {
+        if (BulletAudioTemplate == null || clips == null || clips.Length == 0) return;
+        if (bulletVoices == null)
+        {
+            bulletVoices = new AudioSource[Mathf.Max(1, BulletAudioVoices)];
+            for (int i = 0; i < bulletVoices.Length; i++)
+            {
+                GameObject go = Object.Instantiate(BulletAudioTemplate.gameObject);
+                go.transform.SetParent(BulletAudioTemplate.transform.parent, false);
+                bulletVoices[i] = go.GetComponent<AudioSource>();
+            }
+        }
+
+        // ponytail: round-robin voices, a 7th overlapping sound cuts off the oldest; raise BulletAudioVoices if that's audible
+        AudioSource src = bulletVoices[bulletVoiceNext];
+        bulletVoiceNext = (bulletVoiceNext + 1) % bulletVoices.Length;
+        src.transform.position = position;
+        src.clip = clips[Random.Range(0, clips.Length)];
+        src.Play();
+    }
+    private bool simLoopRunning = false;
+    private float simLastTime = 0f;
+
+    private void SpawnSimulatedProjectile(Vector3 position, Vector3 direction)
+    {
+        if (simActive == null)
+        {
+            int n = Mathf.Max(1, MaxSimulatedProjectiles);
+            simPos = new Vector3[n];
+            simVel = new Vector3[n];
+            simDieTime = new float[n];
+            simActive = new bool[n];
+            simCanWhizz = new bool[n];
+            simTracers = new LineRenderer[n];
+            if (TracerTemplate != null)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    GameObject go = Object.Instantiate(TracerTemplate.gameObject);
+                    go.transform.SetParent(TracerTemplate.transform.parent, false);
+                    simTracers[i] = go.GetComponent<LineRenderer>();
+                    simTracers[i].enabled = false;
+                    go.SetActive(true);
+                }
+                TracerTemplate.gameObject.SetActive(false);
+            }
+        }
+
+        // ponytail: round-robin overwrites the oldest bullet when full, raise MaxSimulatedProjectiles if tracers vanish mid-flight
+        int slot = simNext;
+        simNext = (simNext + 1) % simActive.Length;
+        simPos[slot] = position;
+        simVel[slot] = direction * SimulatedProjectileSpeed;
+        simDieTime[slot] = Time.time + SimulatedProjectileLifetime;
+        simActive[slot] = true;
+        // you don't hear your own bullets whizz past
+        simCanWhizz[slot] = WhizzSounds != null && WhizzSounds.Length > 0 && GetPickupOwner() != Networking.LocalPlayer;
+        if (simTracers[slot] != null)
+        {
+            // ponytail: counter is per client, so which round is the tracer can differ between players
+            simRoundCounter++;
+            bool isTracer = TracerEveryNthRound > 0 && simRoundCounter % TracerEveryNthRound == 0;
+            simTracers[slot].SetPosition(0, position);
+            simTracers[slot].SetPosition(1, position);
+            simTracers[slot].enabled = isTracer;
+        }
+
+        if (!simLoopRunning)
+        {
+            simLoopRunning = true;
+            simLastTime = Time.time;
+            SendCustomEventDelayedFrames(nameof(_SimulateProjectiles), 1);
+        }
+    }
+
+    // Self-scheduling per-frame loop: costs nothing while no bullets are in flight
+    // (and avoids clashing with subclasses that define their own Update).
+    public void _SimulateProjectiles()
+    {
+        float now = Time.time;
+        float dt = now - simLastTime;
+        simLastTime = now;
+        Vector3 gravityStep = Physics.gravity * (SimulatedGravityMultiplier * dt);
+        int mask = HitLayers.value | EffectLayers.value;
+        int alive = 0;
+        VRCPlayerApi local = Networking.LocalPlayer;
+        Vector3 head = Utilities.IsValid(local) ? local.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero;
+        float whizzSqr = WhizzRadius * WhizzRadius;
+
+        for (int i = 0; i < simActive.Length; i++)
+        {
+            if (!simActive[i]) continue;
+
+            Vector3 pos = simPos[i];
+            Vector3 vel = simVel[i] + gravityStep;
+            Vector3 step = vel * dt;
+            float dist = step.magnitude;
+
+            if (simCanWhizz[i] && dist > 0f)
+            {
+                // closest point on this frame's travel segment to the local head
+                float t = Mathf.Clamp01(Vector3.Dot(head - pos, step) / (dist * dist));
+                Vector3 closest = pos + step * t;
+                if ((head - closest).sqrMagnitude < whizzSqr)
+                {
+                    simCanWhizz[i] = false;
+                    PlayBulletSound(WhizzSounds, closest);
+                }
+            }
+
+            RaycastHit hit;
+            if (dist > 0f && Physics.Raycast(pos, step / dist, out hit, dist, mask))
+            {
+                Vector3 dir = vel.normalized;
+                int layerBit = 1 << hit.collider.gameObject.layer;
+                if ((HitLayers.value & layerBit) != 0)
+                {
+                    ApplyBulletHit(hit, dir, GetPickupOwner());
+                }
+                // matches raycast mode: no sparks / ricochet sound on hit-only layers (e.g. player hitboxes)
+                if ((EffectLayers.value & layerBit) != 0)
+                {
+                    SpawnImpactEffects(hit, dir);
+                }
+                KillSimulatedProjectile(i);
+                continue;
+            }
+
+            if (now >= simDieTime[i])
+            {
+                KillSimulatedProjectile(i);
+                continue;
+            }
+
+            simPos[i] = pos + step;
+            simVel[i] = vel;
+            if (simTracers[i] != null && simTracers[i].enabled)
+            {
+                // ponytail: tracer spans last frame's travel (motion streak), so its length scales with speed and frame time
+                simTracers[i].SetPosition(0, pos);
+                simTracers[i].SetPosition(1, pos + step);
+            }
+            alive++;
+        }
+
+        if (alive > 0) SendCustomEventDelayedFrames(nameof(_SimulateProjectiles), 1);
+        else simLoopRunning = false;
+    }
+
+    private void KillSimulatedProjectile(int i)
+    {
+        simActive[i] = false;
+        if (simTracers[i] != null) simTracers[i].enabled = false;
+    }
+
+    private void ApplyBulletHit(RaycastHit hit, Vector3 direction, VRCPlayerApi aimPlayer)
+    {
+        if (hit.rigidbody != null)
+        {
+            if (aimPlayer != null && aimPlayer == Networking.LocalPlayer && !Networking.IsOwner(hit.rigidbody.gameObject))
+            {
+                Networking.SetOwner(aimPlayer, hit.rigidbody.gameObject);
+            }
+            hit.rigidbody.AddForceAtPosition(direction * ImpactForce, hit.point, ForceMode.Impulse);
+        }
+        if (hit.collider != null)
+        {
+            UCS_Hitbox hitbox = hit.collider.gameObject.GetComponent<UCS_Hitbox>();
+            if (hitbox != null)
+            {
+                hitbox.HitEvent((int)Damage,cachedPickupOwner != null ? cachedPickupOwner.playerId : -1, -1, (int)DamageType.Bullet);
+                //teamID is currently unused, we can implement team damage logic later and pass the teamID here
+            }
+        }
+    }
+
+    private void SpawnImpactEffects(RaycastHit usedHit, Vector3 direction)
+    {
+        Vector3 surfaceNormal = usedHit.normal;
+        Vector3 effectPos = usedHit.point + surfaceNormal * HitEffectOffset;
+        Quaternion effectRot = Quaternion.LookRotation(-direction, surfaceNormal);
+
+        GameObject hitEffect = HitEffectsPool != null ? HitEffectsPool.AcquireInstance() : null;
+        if (hitEffect != null)
+        {
+            hitEffect.transform.position = effectPos;
+            hitEffect.transform.rotation = effectRot;
+        }
+
+        GameObject bulletSpark = BulletSparkPool != null ? BulletSparkPool.AcquireInstance() : null;
+        if (bulletSpark != null)
+        {
+            Vector3 sparkPos = usedHit.point + surfaceNormal * BulletSparkOffset;
+            bulletSpark.transform.position = sparkPos;
+            bulletSpark.transform.rotation = effectRot;
+        }
+
+        PlayBulletSound(SurfaceImpactSounds, usedHit.point);
+    }
+
     private void BulletRaycast(Transform muzzle)
     {
         if (muzzle == null) return;
@@ -396,24 +637,7 @@ public class UCS_BaseGun : UdonSharpBehaviour
         {
             primaryHit = true;
             primaryHitInfo = hit;
-
-            if (hit.rigidbody != null)
-            {
-                if (aimPlayer != null && aimPlayer == Networking.LocalPlayer && !Networking.IsOwner(hit.rigidbody.gameObject))
-                {
-                    Networking.SetOwner(aimPlayer, hit.rigidbody.gameObject);
-                }
-                hit.rigidbody.AddForceAtPosition(direction * ImpactForce, hit.point, ForceMode.Impulse);
-            }
-            if (hit.collider != null)
-            {
-                UCS_Hitbox hitbox = hit.collider.gameObject.GetComponent<UCS_Hitbox>();
-                if (hitbox != null)
-                {
-                    hitbox.HitEvent((int)Damage,cachedPickupOwner != null ? cachedPickupOwner.playerId : -1, -1, (int)DamageType.Bullet);
-                    //teamID is currently unused, we can implement team damage logic later and pass the teamID here
-                }
-            }
+            ApplyBulletHit(hit, direction, aimPlayer);
         }
 
         // effect hit (separate ray) - prefer this for visual placement
@@ -436,28 +660,33 @@ public class UCS_BaseGun : UdonSharpBehaviour
 
         if (haveEffectSource)
         {
-            Vector3 surfaceNormal = usedHit.normal;
-            Vector3 effectPos = usedHit.point + surfaceNormal * HitEffectOffset;
-            Quaternion effectRot = Quaternion.LookRotation(-direction, surfaceNormal);
-
-            GameObject hitEffect = HitEffectsPool != null ? HitEffectsPool.AcquireInstance() : null;
-            if (hitEffect != null)
-            {
-                hitEffect.transform.position = effectPos;
-                hitEffect.transform.rotation = effectRot;
-            }
-
-            GameObject bulletSpark = BulletSparkPool != null ? BulletSparkPool.AcquireInstance() : null;
-            if (bulletSpark != null)
-            {
-                Vector3 sparkPos = usedHit.point + surfaceNormal * BulletSparkOffset;
-                bulletSpark.transform.position = sparkPos;
-                bulletSpark.transform.rotation = effectRot;
-            }
+            SpawnImpactEffects(usedHit, direction);
         }
-        else
+    }
+
+    // One shot out of one muzzle, in whichever bullet mode is configured.
+    private void FireFromMuzzle(Transform muzzle)
+    {
+        bool rigidbodyMode = UseProjectiles && ProjectileManager != null;
+        if (!rigidbodyMode && !SimulatedProjectiles)
         {
-            // no hit - do not spawn an impact effect
+            if (Raycast) BulletRaycast(muzzle);
+            return;
+        }
+
+        Vector3 baseDir = GetAimDirection(muzzle, GetPickupOwner(), DesktopFaceRaycastAiming);
+        int pellets = shotgunMode ? PelletsPerShot : 1;
+        for (int p = 0; p < pellets; p++)
+        {
+            Vector3 dir = baseDir;
+            if (shotgunMode)
+            {
+                float yaw = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
+                float pitch = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
+                dir = Quaternion.Euler(pitch, yaw, 0f) * Quaternion.LookRotation(baseDir) * Vector3.forward;
+            }
+            if (rigidbodyMode) ProjectileManager.SpawnProjectile(muzzle.position, dir, ProjectileSpeed);
+            else SpawnSimulatedProjectile(muzzle.position, dir);
         }
     }
     int burstShotsRemaining;
@@ -473,75 +702,13 @@ public class UCS_BaseGun : UdonSharpBehaviour
                 {
                     foreach(Transform muzzle in MuzzlePoints)
                     {
-                        if (UseProjectiles)
-                        {
-                            if (ProjectileManager != null)
-                            {
-                                Vector3 baseDir = GetAimDirection(muzzle, GetPickupOwner(), DesktopFaceRaycastAiming);
-                                if (shotgunMode)
-                                {
-                                    for (int p = 0; p < PelletsPerShot; p++)
-                                    {
-                                        float yaw = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
-                                        float pitch = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
-                                        Quaternion rot = Quaternion.Euler(pitch, yaw, 0f) * Quaternion.LookRotation(baseDir);
-                                        ProjectileManager.SpawnProjectile(muzzle.position, rot * Vector3.forward, ProjectileSpeed);
-                                    }
-                                }
-                                else
-                                {
-                                    ProjectileManager.SpawnProjectile(muzzle.position, baseDir, ProjectileSpeed);
-                                }
-                            }
-                            else if (Raycast)
-                            {
-                                BulletRaycast(muzzle);
-                            }
-                        }
-                        else
-                        {
-                            if(Raycast)
-                            {
-                                BulletRaycast(muzzle);
-                            }
-                        }
+                        if (muzzle != null) FireFromMuzzle(muzzle);
                     }
                 }
             }
-            else
+            else if (MuzzlePoint != null)
             {
-                if (MuzzlePoint != null)
-                {
-                    if (UseProjectiles)
-                    {
-                        if (ProjectileManager != null)
-                        {
-                            Vector3 baseDir = GetAimDirection(MuzzlePoint, GetPickupOwner(), DesktopFaceRaycastAiming);
-                            if (shotgunMode)
-                            {
-                                for (int p = 0; p < PelletsPerShot; p++)
-                                {
-                                    float yaw = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
-                                    float pitch = Random.Range(-ProjectileSpreadAngle, ProjectileSpreadAngle);
-                                    Quaternion rot = Quaternion.Euler(pitch, yaw, 0f) * Quaternion.LookRotation(baseDir);
-                                    ProjectileManager.SpawnProjectile(MuzzlePoint.position, rot * Vector3.forward, ProjectileSpeed);
-                                }
-                            }
-                            else
-                            {
-                                ProjectileManager.SpawnProjectile(MuzzlePoint.position, baseDir, ProjectileSpeed);
-                            }
-                        }
-                        else if (Raycast)
-                        {
-                            BulletRaycast(MuzzlePoint);
-                        }
-                    }
-                    else if (Raycast)
-                    {
-                        BulletRaycast(MuzzlePoint);
-                    }
-                }
+                FireFromMuzzle(MuzzlePoint);
             }
 
             // start fire-cycle animation on this instance (FireGun is invoked on all clients)
@@ -553,10 +720,19 @@ public class UCS_BaseGun : UdonSharpBehaviour
                 else GunAnimator.SetTrigger("IsFiring");
             }
 
-            //play fire sound
+            //play fire sound, delayed by distance / speed of sound for listeners further away
             if(FireSound != null && barrelAudioSource != null)
             {
-                barrelAudioSource.PlayOneShot(FireSound);
+                float soundDelay = 0f;
+                VRCPlayerApi listener = Networking.LocalPlayer;
+                if (SpeedOfSound > 0f && Utilities.IsValid(listener))
+                {
+                    Vector3 ear = listener.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
+                    soundDelay = Vector3.Distance(ear, barrelAudioSource.transform.position) / SpeedOfSound;
+                }
+                // ~7 m: below that the delay isn't perceptible, so skip the scheduling
+                if (soundDelay < 0.02f) barrelAudioSource.PlayOneShot(FireSound);
+                else SendCustomEventDelayedSeconds(nameof(_PlayDelayedFireSound), soundDelay);
             }
 
             //play muzzle flash
@@ -608,6 +784,11 @@ public class UCS_BaseGun : UdonSharpBehaviour
                 burstShotsRemaining = BurstCount;
             }
         }
+    }
+
+    public void _PlayDelayedFireSound()
+    {
+        if (FireSound != null && barrelAudioSource != null) barrelAudioSource.PlayOneShot(FireSound);
     }
 
     public void StartReload()
@@ -804,6 +985,19 @@ public class UCS_BaseGunEditor : Editor
     private SerializedProperty projectileManager;
     private SerializedProperty projectileSpeed;
     private SerializedProperty projectileSpreadAngle;
+    private SerializedProperty simulatedProjectiles;
+    private SerializedProperty simulatedProjectileSpeed;
+    private SerializedProperty simulatedGravityMultiplier;
+    private SerializedProperty simulatedProjectileLifetime;
+    private SerializedProperty maxSimulatedProjectiles;
+    private SerializedProperty tracerTemplate;
+    private SerializedProperty tracerEveryNthRound;
+    private SerializedProperty speedOfSound;
+    private SerializedProperty bulletAudioTemplate;
+    private SerializedProperty bulletAudioVoices;
+    private SerializedProperty surfaceImpactSounds;
+    private SerializedProperty whizzSounds;
+    private SerializedProperty whizzRadius;
     private SerializedProperty roundsPerMinute;
     private SerializedProperty magazineSize;
     private SerializedProperty reloadTime;
@@ -840,7 +1034,7 @@ public class UCS_BaseGunEditor : Editor
 
     private bool muzzleSettingsFoldout = true;
     private bool raycastSettingsFoldout = true;
-    private bool projectileSettingsFoldout = false;
+    private static readonly string[] BulletModeNames = { "None", "Raycast (hitscan)", "Simulated Projectile", "Rigidbody Projectile" };
     private bool gunSettingsFoldout = true;
     private bool fireModeFoldout = true;
     private bool audioSettingsFoldout = true;
@@ -867,6 +1061,19 @@ public class UCS_BaseGunEditor : Editor
         projectileManager = serializedObject.FindProperty("ProjectileManager");
         projectileSpeed = serializedObject.FindProperty("ProjectileSpeed");
         projectileSpreadAngle = serializedObject.FindProperty("ProjectileSpreadAngle");
+        simulatedProjectiles = serializedObject.FindProperty("SimulatedProjectiles");
+        simulatedProjectileSpeed = serializedObject.FindProperty("SimulatedProjectileSpeed");
+        simulatedGravityMultiplier = serializedObject.FindProperty("SimulatedGravityMultiplier");
+        simulatedProjectileLifetime = serializedObject.FindProperty("SimulatedProjectileLifetime");
+        maxSimulatedProjectiles = serializedObject.FindProperty("MaxSimulatedProjectiles");
+        tracerTemplate = serializedObject.FindProperty("TracerTemplate");
+        tracerEveryNthRound = serializedObject.FindProperty("TracerEveryNthRound");
+        speedOfSound = serializedObject.FindProperty("SpeedOfSound");
+        bulletAudioTemplate = serializedObject.FindProperty("BulletAudioTemplate");
+        bulletAudioVoices = serializedObject.FindProperty("BulletAudioVoices");
+        surfaceImpactSounds = serializedObject.FindProperty("SurfaceImpactSounds");
+        whizzSounds = serializedObject.FindProperty("WhizzSounds");
+        whizzRadius = serializedObject.FindProperty("WhizzRadius");
         roundsPerMinute = serializedObject.FindProperty("RoundsPerMinute");
         magazineSize = serializedObject.FindProperty("MagazineSize");
         reloadTime = serializedObject.FindProperty("ReloadTime");
@@ -948,15 +1155,24 @@ public class UCS_BaseGunEditor : Editor
 
         EditorGUILayout.Space();
 
-        // Raycast Settings
-        raycastSettingsFoldout = EditorGUILayout.Foldout(raycastSettingsFoldout, "Raycast Settings", true);
+        // Bullet Settings: one dropdown backed by the Raycast / SimulatedProjectiles / UseProjectiles bools
+        raycastSettingsFoldout = EditorGUILayout.Foldout(raycastSettingsFoldout, "Bullet Settings", true);
         if (raycastSettingsFoldout)
         {
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(raycast);
-            if (raycast.boolValue)
+            // mirrors runtime priority in FireFromMuzzle: rigidbody > simulated > raycast
+            int mode = useProjectiles.boolValue ? 3 : simulatedProjectiles.boolValue ? 2 : raycast.boolValue ? 1 : 0;
+            int newMode = EditorGUILayout.Popup("Bullet Mode", mode, BulletModeNames);
+            if (newMode != mode)
             {
-                EditorGUILayout.PropertyField(range);
+                raycast.boolValue = newMode == 1;
+                simulatedProjectiles.boolValue = newMode == 2;
+                useProjectiles.boolValue = newMode == 3;
+            }
+
+            if (newMode == 1 || newMode == 2)
+            {
+                if (newMode == 1) EditorGUILayout.PropertyField(range);
                 EditorGUILayout.PropertyField(hitLayers);
                 EditorGUILayout.PropertyField(effectLayers, new GUIContent("Effect Layers (for bullet sparks and hit effects)"));
                 EditorGUILayout.PropertyField(damage);
@@ -964,24 +1180,36 @@ public class UCS_BaseGunEditor : Editor
                 EditorGUILayout.PropertyField(hitEffectsPoolProp, new GUIContent("Hit Effect Pool"));
                 EditorGUILayout.PropertyField(bulletSparkPoolProp, new GUIContent("Bullet Spark Pool"));
             }
-            EditorGUI.indentLevel--;
-        }
-
-        EditorGUILayout.Space();
-
-        EditorGUILayout.Space();
-
-        // Projectile Settings
-        projectileSettingsFoldout = EditorGUILayout.Foldout(projectileSettingsFoldout, "Projectile Settings", true);
-        if (projectileSettingsFoldout)
-        {
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(useProjectiles);
-            if (useProjectiles.boolValue)
+            if (newMode == 2)
+            {
+                EditorGUILayout.PropertyField(simulatedProjectileSpeed, new GUIContent("Muzzle Velocity (m/s)"));
+                EditorGUILayout.PropertyField(simulatedGravityMultiplier, new GUIContent("Gravity Multiplier"));
+                EditorGUILayout.PropertyField(simulatedProjectileLifetime, new GUIContent("Lifetime (s)"));
+                EditorGUILayout.PropertyField(maxSimulatedProjectiles, new GUIContent("Max In Flight"));
+                EditorGUILayout.PropertyField(tracerTemplate, new GUIContent("Tracer (LineRenderer)"));
+                EditorGUILayout.PropertyField(tracerEveryNthRound, new GUIContent("Tracer Every Nth Round"));
+            }
+            if (newMode == 1 || newMode == 2)
+            {
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Bullet Audio", EditorStyles.boldLabel);
+                EditorGUILayout.PropertyField(bulletAudioTemplate, new GUIContent("Audio Source (3D template)"));
+                EditorGUILayout.PropertyField(bulletAudioVoices, new GUIContent("Voices"));
+                EditorGUILayout.PropertyField(surfaceImpactSounds, true);
+                if (newMode == 2)
+                {
+                    EditorGUILayout.PropertyField(whizzSounds, new GUIContent("Whizz-By Sounds"), true);
+                    EditorGUILayout.PropertyField(whizzRadius);
+                }
+            }
+            if (newMode == 3)
             {
                 EditorGUILayout.PropertyField(projectileManager, new GUIContent("Projectile Manager"));
                 EditorGUILayout.PropertyField(projectileSpeed);
-                EditorGUILayout.PropertyField(projectileSpreadAngle, new GUIContent("Projectile Spread Angle"));
+            }
+            if (newMode >= 2 && shotgunMode.boolValue)
+            {
+                EditorGUILayout.PropertyField(projectileSpreadAngle, new GUIContent("Pellet Spread Angle"));
             }
             EditorGUI.indentLevel--;
         }
@@ -1017,6 +1245,7 @@ public class UCS_BaseGunEditor : Editor
             EditorGUILayout.PropertyField(magazineAudioSource);
             EditorGUILayout.PropertyField(firemechanicsAudioSource);
             EditorGUILayout.PropertyField(fireSound);
+            EditorGUILayout.PropertyField(speedOfSound, new GUIContent("Speed Of Sound (m/s, 0 = instant)"));
             EditorGUILayout.PropertyField(emptyFireSound);
             EditorGUILayout.PropertyField(magpullSound);
             EditorGUILayout.PropertyField(maginsertSound);

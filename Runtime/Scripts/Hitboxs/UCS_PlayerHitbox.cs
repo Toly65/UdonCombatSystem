@@ -46,8 +46,13 @@ public class UCS_PlayerHitbox : UCS_Hitbox
 
     // Scaled to fit avatar dimensions on eye height change; base X/Z captured from initial localScale
     public Transform scalePoint;
+    [Tooltip("Offset from the tracked bone in bone-local space, in multiples of eye height (e.g. Y 0.05 lifts a head box).")]
+    public Vector3 boneOffset;
     [HideInInspector] public float scaleBaseX;
+    [HideInInspector] public float scaleBaseY;
     [HideInInspector] public float scaleBaseZ;
+    // Metres that boneOffset is multiplied by. Eye height for most bones, measured head size for the head.
+    [HideInInspector] public float offsetScale;
 
     private VRCPlayerApi _trackedPlayer;
     private VRCPlayerApi localPlayer;
@@ -58,6 +63,7 @@ public class UCS_PlayerHitbox : UCS_Hitbox
         if (scalePoint != null)
         {
             scaleBaseX = scalePoint.localScale.x;
+            scaleBaseY = scalePoint.localScale.y;
             scaleBaseZ = scalePoint.localScale.z;
         }
         PropagateTeamIDToAttachedHitboxes();

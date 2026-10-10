@@ -31,6 +31,21 @@ public class UCS_PlayerHealthObjectBase : UdonSharpBehaviour
     [SerializeField] private UCS_HealthBarsManager _localHealthBar;
     [SerializeField] private UCS_DeathHandlerBase _deathHandler;
 
+    [Header("Local hit feedback")]
+    [Tooltip("2D AudioSource that plays only for the player who got shot")]
+    [SerializeField] private AudioSource localHitAudioSource;
+    [SerializeField] private AudioClip[] localBulletHitSounds;
+    [Tooltip("Renderer using UCS/DamageVignette (huge Cube, no collider). Darkens the local player's view as health drops.")]
+    [SerializeField] private Renderer damageVignette;
+    [Tooltip("Seconds the vignette stays at full strength after a hit")]
+    [SerializeField] private float vignetteHoldSeconds = 0.4f;
+    [Tooltip("Seconds it then takes to fade out completely")]
+    [SerializeField] private float vignetteFadeSeconds = 2f;
+    private float vignettePeak = 0f;
+    private float vignetteLastTarget = 0f;
+    private float vignetteFadeStartTime = 0f;
+    private bool vignetteFadeRunning = false;
+
     [Header("pill hitbox")]
     public GameObject lod0Root;
     public UCS_PlayerHitbox[] lod0Hitboxes;
@@ -41,6 +56,18 @@ public class UCS_PlayerHealthObjectBase : UdonSharpBehaviour
     public GameObject lod2Root;
     public UCS_PlayerHitbox[] lod2Hitboxes;
     public HitboxLODLevel maxLOD = HitboxLODLevel.Articulated;
+
+    [Header("LOD switch distances (metres from local player)")]
+    [Tooltip("Within this distance use Articulated (LOD2).")]
+    public float articulatedMaxDistance = 15f;
+    [Tooltip("Within this distance use Segmented Pill (LOD1). Beyond it, Pill (LOD0).")]
+    public float segmentedPillMaxDistance = 40f;
+
+    public int GetLODForDistance(float distance)
+    {
+        int level = distance <= articulatedMaxDistance ? 2 : (distance <= segmentedPillMaxDistance ? 1 : 0);
+        return level > (int)maxLOD ? (int)maxLOD : level;
+    }
 
     private int _currentLOD = -1;
     private VRCPlayerApi _trackedPlayer;
@@ -151,6 +178,13 @@ public class UCS_PlayerHealthObjectBase : UdonSharpBehaviour
         lastBlamedPlayerID = BlamedPlayerID;
         lastDamageType = damageType;
 
+        if (damageType == (int)DamageType.Bullet && localHitAudioSource != null
+            && localBulletHitSounds != null && localBulletHitSounds.Length > 0
+            && Utilities.IsValid(_trackedPlayer) && _trackedPlayer.isLocal)
+        {
+            localHitAudioSource.PlayOneShot(localBulletHitSounds[Random.Range(0, localBulletHitSounds.Length)]);
+        }
+
         if (!Networking.IsOwner(gameObject))
         {
             return;
@@ -216,7 +250,7 @@ public class UCS_PlayerHealthObjectBase : UdonSharpBehaviour
 
     private void PushLocalHealthBarUpdate()
     {
-        if (_localHealthBar == null || !Utilities.IsValid(Networking.LocalPlayer))
+        if (!Utilities.IsValid(Networking.LocalPlayer))
         {
             return;
         }
@@ -236,7 +270,56 @@ public class UCS_PlayerHealthObjectBase : UdonSharpBehaviour
             return;
         }
 
-        _localHealthBar.PushHealthUpdate(shadowHealth, maxHealth);
+        if (_localHealthBar != null)
+        {
+            _localHealthBar.PushHealthUpdate(shadowHealth, maxHealth);
+        }
+
+        if (damageVignette != null)
+        {
+            float target = 1f - Mathf.Clamp01(shadowHealth / maxHealth);
+            if (target > vignetteLastTarget + 0.001f)
+            {
+                // took damage: flash to the current-health level, then fade out
+                vignettePeak = target;
+                vignetteFadeStartTime = Time.time + vignetteHoldSeconds;
+                if (!vignetteFadeRunning)
+                {
+                    vignetteFadeRunning = true;
+                    SendCustomEventDelayedFrames(nameof(_FadeDamageVignette), 1);
+                }
+            }
+            else if (target < vignetteLastTarget)
+            {
+                // healed / respawned: never show more than the new health warrants
+                vignettePeak = Mathf.Min(vignettePeak, target);
+            }
+            vignetteLastTarget = target;
+            SetDamageVignette(GetFadedVignette());
+        }
+    }
+
+    private float GetFadedVignette()
+    {
+        float t = (Time.time - vignetteFadeStartTime) / Mathf.Max(0.01f, vignetteFadeSeconds);
+        return vignettePeak * (1f - Mathf.Clamp01(t));
+    }
+
+    // Self-scheduling per-frame fade, only runs on the local player's health object while the vignette is visible.
+    public void _FadeDamageVignette()
+    {
+        float v = GetFadedVignette();
+        SetDamageVignette(v);
+        if (v > 0f) SendCustomEventDelayedFrames(nameof(_FadeDamageVignette), 1);
+        else vignetteFadeRunning = false;
+    }
+
+    private void SetDamageVignette(float intensity)
+    {
+        // material (not sharedMaterial) so editor play mode never writes into the asset
+        damageVignette.material.SetFloat("_Intensity", intensity);
+        // off when faded: no fullscreen overdraw while it isn't showing
+        damageVignette.enabled = intensity > 0.001f;
     }
 
     public void QueueHealthSync()

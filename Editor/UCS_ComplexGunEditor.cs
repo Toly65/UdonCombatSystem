@@ -18,6 +18,8 @@ public class UCS_ComplexGunEditor : Editor
     private SerializedProperty desktopMagEjectDurationProp;
     private SerializedProperty magazineVisualRootProp;
     private SerializedProperty magazinePickupAnchorProp;
+    private SerializedProperty autoLockSlideOnEmptyProp;
+    private SerializedProperty manualSlideLockOnlyProp;
 
     void OnEnable()
     {
@@ -34,6 +36,8 @@ public class UCS_ComplexGunEditor : Editor
         desktopMagEjectDurationProp = serializedObject.FindProperty("desktopMagEjectDuration");
         magazineVisualRootProp = serializedObject.FindProperty("magazineVisualRoot");
         magazinePickupAnchorProp = serializedObject.FindProperty("magazinePickupAnchor");
+        autoLockSlideOnEmptyProp = serializedObject.FindProperty("autoLockSlideOnEmpty");
+        manualSlideLockOnlyProp = serializedObject.FindProperty("manualSlideLockOnly");
     }
 
     void OnDisable()
@@ -63,6 +67,8 @@ public class UCS_ComplexGunEditor : Editor
         EditorGUILayout.PropertyField(magBeltProp, new GUIContent("Mag Belt", "Reference to the player's mag belt used to request magazines at runtime."));
         EditorGUILayout.PropertyField(slidePhysBoneProp, new GUIContent("Slide PhysBone"));
         EditorGUILayout.PropertyField(sliderHandlerProp, new GUIContent("Slider Handler", "Controls the local slide animation when the slide is simulated during reload handling."));
+        EditorGUILayout.PropertyField(autoLockSlideOnEmptyProp, new GUIContent("Auto Lock Slide On Empty", "Automatically lock the slide open when the gun runs out of ammo (bolt-catch / last-round hold-open). Disable for guns like the G3 whose slide closes on empty."));
+        EditorGUILayout.PropertyField(manualSlideLockOnlyProp, new GUIContent("Manual Slide Lock Only", "G3-style: the slide never auto-locks, only the player can latch it, and it unlocks the next time they grab it."));
         EditorGUILayout.PropertyField(requiredMagPoolProp, new GUIContent("Required Mag Pool"));
         EditorGUILayout.PropertyField(desktopSlideAnimDurationProp, new GUIContent("Desktop Slide Anim Duration", "How long the local slide animation takes during the desktop reload path."));
         EditorGUILayout.PropertyField(desktopMagEjectDurationProp, new GUIContent("Desktop Mag Eject Duration", "Delay used before the desktop reload path ejects the magazine."));

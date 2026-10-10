@@ -21,6 +21,11 @@ public class UCS_MagFedGun : UCS_BaseGun
         return MagazineSize + (bulletInChamberAddsToMag ? 1 : 0);
     }
 
+    public override int GetAmmoCapacity()
+    {
+        return MagazineSize;
+    }
+
     protected override void InitializeAmmoState()
     {
         // pre-fill from magazine capacity, then let the base derive chamber state

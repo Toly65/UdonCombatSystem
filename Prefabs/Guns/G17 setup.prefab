@@ -217,6 +217,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.9
@@ -1131,6 +1132,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -1401,6 +1403,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -1961,6 +1964,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -2231,6 +2235,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -2840,6 +2845,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -3112,6 +3118,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -3463,6 +3470,18 @@ MonoBehaviour:
   ProjectileManager: {fileID: 0}
   ProjectileSpeed: 50
   ProjectileSpreadAngle: 5
+  SimulatedProjectiles: 0
+  SimulatedProjectileSpeed: 150
+  SimulatedGravityMultiplier: 1
+  SimulatedProjectileLifetime: 3
+  MaxSimulatedProjectiles: 32
+  TracerTemplate: {fileID: 0}
+  TracerEveryNthRound: 3
+  BulletAudioTemplate: {fileID: 0}
+  BulletAudioVoices: 6
+  SurfaceImpactSounds: []
+  WhizzSounds: []
+  WhizzRadius: 2.5
   RoundsPerMinute: 300
   ReloadTime: 2
   InfiniteAmmo: 0
@@ -3477,6 +3496,7 @@ MonoBehaviour:
   magazineAudioSource: {fileID: 2533265407448342565}
   firemechanicsAudioSource: {fileID: 2533265407448342565}
   FireSound: {fileID: 8300000, guid: e3663c524fffb39448e0039a4275fa22, type: 3}
+  SpeedOfSound: 343
   EmptyFireSound: {fileID: 8300000, guid: d51d1776867de144280b8792e85510ea, type: 3}
   magpullSound: {fileID: 8300000, guid: 877625d5ca9b541468a4f181bfc309f3, type: 3}
   maginsertSound: {fileID: 8300000, guid: 75673a11f897e9440912237daa61cb88, type: 3}
@@ -3508,6 +3528,8 @@ MonoBehaviour:
   desktopMagEjectDuration: 0.25
   magazineVisualRoot: {fileID: 9158453805135890296}
   magazinePickupAnchor: {fileID: 9107357492821770180}
+  autoLockSlideOnEmpty: 1
+  manualSlideLockOnly: 0
 --- !u!114 &7374138271077155692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3909,6 +3931,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -4094,6 +4117,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -4478,6 +4502,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -7398,6 +7423,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -7784,6 +7810,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -8224,6 +8251,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -8670,6 +8698,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -9209,6 +9238,7 @@ MonoBehaviour:
   complexGun: {fileID: 1540008642408557987}
   physbonePoller: {fileID: 6765086189733989390}
   simDuration: 0.12
+  separateChargingHandle: 0
   ejectionThreshold: 0.85
   fullRearThreshold: 0.95
 --- !u!114 &8878999661732796717
@@ -9908,6 +9938,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -10296,6 +10327,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -10599,6 +10631,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -10898,6 +10931,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -11953,9 +11987,9 @@ AudioSource:
   Spatialize: 1
   SpatializePostEffects: 0
   Priority: 128
-  DopplerLevel: 1
-  MinDistance: 1
-  MaxDistance: 500
+  DopplerLevel: 0
+  MinDistance: 2
+  MaxDistance: 400
   Pan2D: 0
   rolloffMode: 0
   BypassEffects: 0
@@ -11990,7 +12024,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -12043,7 +12077,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Gain: 10
-  Far: 40
+  Far: 400
   Near: 0
   VolumetricRadius: 0
   EnableSpatialization: 1
@@ -12278,11 +12312,11 @@ AudioSource:
   Spatialize: 1
   SpatializePostEffects: 0
   Priority: 128
-  DopplerLevel: 1
-  MinDistance: 1
-  MaxDistance: 500
+  DopplerLevel: 0
+  MinDistance: 0.5
+  MaxDistance: 12
   Pan2D: 0
-  rolloffMode: 0
+  rolloffMode: 1
   BypassEffects: 0
   BypassListenerEffects: 0
   BypassReverbZones: 0
@@ -12315,7 +12349,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -12368,7 +12402,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Gain: 10
-  Far: 80
+  Far: 12
   Near: 0
   VolumetricRadius: 0
   EnableSpatialization: 1
@@ -13346,6 +13380,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -13896,6 +13931,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
@@ -14332,6 +14368,7 @@ MonoBehaviour:
   DropEventName: 
   ThrowVelocityBoostMinSpeed: 1
   ThrowVelocityBoostScale: 1
+  OutlineRenderers: []
   currentlyHeldBy: {fileID: 0}
   pickupable: 1
   proximity: 0.1
