@@ -43,6 +43,9 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
     [SerializeField] private Vector2 rotationRange = new Vector2(60f, 60f);
     [SerializeField] private float followSpeed = 0.05f;
 
+    [Tooltip("Optional: moves the mag belt to the free hand when a grip is grabbed or released")]
+    [SerializeField] private UCS_MagBelt magBelt;
+
     // State
     private bool primaryHeld;
     private bool secondaryHeld;
@@ -202,6 +205,9 @@ public class UCS_TwoHandedManager : UdonSharpBehaviour
             return;
 
         ApplyGripState(isPrimaryHeld, isSecondaryHeld);
+
+        if (magBelt != null)
+            magBelt.RequestSideRefresh();
 
         // Broadcast the new grip state. Ownership may still be in flight (SetOwner
         // is async), so TrySendSync defers until OnOwnershipTransferred confirms it.

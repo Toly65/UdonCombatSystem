@@ -11,6 +11,10 @@ This is a VRChat Creator Companion (VCC/VPM) Unity package: `com.toly65.udon-com
 - [Gun Setup](https://github.com/Toly65/UdonCombatSystem/wiki/Gun-Setup) — drag-and-drop setup for the included G17 (one-handed) and M4 (two-handed) gun prefabs.
 - [Health System Setup](https://github.com/Toly65/UdonCombatSystem/wiki/Health-System-Setup) — drag-and-drop setup for player health, hitboxes, teams, death handling, and health bar UI.
 
+## Porting a new gun model (LLM agents)
+
+- [LLM-Gun-Porting.md](LLM-Gun-Porting.md): end-to-end pipeline for agents using the Blender MCP + Unity MCP (CoplayDev) servers: which MCPs to install first, model cleanup/decimation, palette atlas, gun-space axes and scale, cloning the M4/G17 template prefab, retargeting the animation clips, grip/socket placement, and play-mode verification. Worked example: the HK416 in `Assets/Toly65/InDevGuns/HK416/`. Read it before starting a port.
+
 ## Script reference (for extending the system)
 
 - [Guns](https://github.com/Toly65/UdonCombatSystem/wiki/Script-Reference-Guns) — `UCS_BaseGun`, `UCS_MagFedGun`, `UCS_ArcadeGun` (stub, non-functional), `UCS_ComplexGun`, slide/socket/grip helpers, firing pipeline.

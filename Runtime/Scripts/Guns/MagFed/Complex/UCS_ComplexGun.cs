@@ -307,6 +307,11 @@ public class UCS_ComplexGun : UCS_MagFedGun
             magSocket.SetSocketedMagGunHeld(true);
         }
 
+        if (magBelt != null)
+        {
+            magBelt.RequestSideRefresh();
+        }
+
         // Ownership handoff can finalize one frame later; re-run once to avoid non-master pickup races.
         SendCustomEventDelayedFrames(nameof(ResolvePostPickupState), 1);
     }
@@ -474,6 +479,11 @@ public class UCS_ComplexGun : UCS_MagFedGun
         if (magSocket != null)
         {
             magSocket.SetSocketedMagGunHeld(false);
+        }
+
+        if (magBelt != null)
+        {
+            magBelt.RequestSideRefresh();
         }
 
         if (sliderHandler != null)

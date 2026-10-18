@@ -26,6 +26,11 @@ public class UCS_HitEffectBase : UdonSharpBehaviour
         gameObject.SetActive(true);
     }
 
+    // called by UCS_HitEffectsPool.SpawnAt after the effect is positioned; override for effects that do gameplay (explosions)
+    public virtual void OnSpawned(int blamedPlayerID, int attackerTeamID)
+    {
+    }
+
     private void Update()
     {
         if (!isActive) return;

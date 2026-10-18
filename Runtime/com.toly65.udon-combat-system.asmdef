@@ -5,7 +5,8 @@
     "VRC.SDK3",
     "VRC.SDKBase",
     "VRC.Udon",
-    "Unity.TextMeshPro"
+    "Unity.TextMeshPro",
+    "com.toly65.udon-stow-system"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

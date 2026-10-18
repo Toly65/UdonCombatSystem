@@ -11,6 +11,10 @@ public class UCS_MagPickup : UdonSharpBehaviour
     [SerializeField] private UCS_Mag mag; //reference to the mag script on the mag prefab, which will handle ammo count and despawning
     [SerializeField] private UCS_MagPool magPool; //reference to the mag pool
     [SerializeField]private VRC_Pickup magPickup;
+    [Tooltip("VRChat uses one ExactGrip for both hands, so a mag set up for a left-hand palm hold sits through the right palm. " +
+             "When set, grabbing with the right hand uses this grip instead (the left-hand grip rotated 180 degrees about the mag's front-back axis).")]
+    [SerializeField] private Transform rightHandGrip;
+    private Transform leftHandGrip;
     private VRCPlayerApi cachedPickupOwner;
     private UCS_MagSocket lastSocketPulledFrom;
     // manager responsibilities merged into UCS_Mag; no separate mag manager required
@@ -23,9 +27,33 @@ public class UCS_MagPickup : UdonSharpBehaviour
         {
             magPickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));
         }
+        if (magPickup != null)
+        {
+            leftHandGrip = magPickup.ExactGrip;
+        }
 
         UpdatePickupOwner();
         ApplyPickupState();
+    }
+
+    // ponytail: VRChat may read ExactGrip only at the moment of the grab, so pick the grip on the grab
+    // press (before the grab) as well as in OnPickup (after it).
+    public override void InputGrab(bool value, VRC.Udon.Common.UdonInputEventArgs args)
+    {
+        if (value && magPickup != null && !magPickup.IsHeld)
+        {
+            UseGripForHand(args.handType == VRC.Udon.Common.HandType.RIGHT);
+        }
+    }
+
+    private void UseGripForHand(bool right)
+    {
+        if (rightHandGrip == null || magPickup == null)
+        {
+            return;
+        }
+
+        magPickup.ExactGrip = right ? rightHandGrip : leftHandGrip;
     }
 
     private void UpdatePickupOwner()
@@ -109,6 +137,12 @@ public class UCS_MagPickup : UdonSharpBehaviour
 
     public override void OnPickup()
     {
+        if (magPickup != null)
+        {
+            UseGripForHand(magPickup.currentHand == VRC_Pickup.PickupHand.Right);
+        }
+
+
         // If this mag was socketed, tell the socket to eject it first so ammo transfer and state are handled.
         if (mag != null && mag.IsSocketed())
         {

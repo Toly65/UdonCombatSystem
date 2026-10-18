@@ -604,20 +604,10 @@ public class UCS_BaseGun : UdonSharpBehaviour
         Vector3 effectPos = usedHit.point + surfaceNormal * HitEffectOffset;
         Quaternion effectRot = Quaternion.LookRotation(-direction, surfaceNormal);
 
-        GameObject hitEffect = HitEffectsPool != null ? HitEffectsPool.AcquireInstance() : null;
-        if (hitEffect != null)
-        {
-            hitEffect.transform.position = effectPos;
-            hitEffect.transform.rotation = effectRot;
-        }
-
-        GameObject bulletSpark = BulletSparkPool != null ? BulletSparkPool.AcquireInstance() : null;
-        if (bulletSpark != null)
-        {
-            Vector3 sparkPos = usedHit.point + surfaceNormal * BulletSparkOffset;
-            bulletSpark.transform.position = sparkPos;
-            bulletSpark.transform.rotation = effectRot;
-        }
+        // blame is passed so a pool of UCS_Explosion can be dropped into either slot for explosive rounds
+        int blamedID = cachedPickupOwner != null ? cachedPickupOwner.playerId : -1;
+        if (HitEffectsPool != null) HitEffectsPool.SpawnAt(effectPos, effectRot, blamedID, -1);
+        if (BulletSparkPool != null) BulletSparkPool.SpawnAt(usedHit.point + surfaceNormal * BulletSparkOffset, effectRot, blamedID, -1);
 
         PlayBulletSound(SurfaceImpactSounds, usedHit.point);
     }

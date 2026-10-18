@@ -16,7 +16,10 @@ public class UCS_MagBelt : UdonSharpBehaviour
     private UCS_MagPool activeMagPool;
 
     //switch between left and right handed
-    [SerializeField] private bool flipBelt = false; 
+    [SerializeField] private bool flipBelt = false;
+    [Tooltip("Move the belt to whichever hand is free: pistol in the left hand puts mags on the right, holding only the front grip " +
+             "of a rifle puts them on the trigger-hand side. Both hands busy or both free keeps the last side. Flip Belt is the starting side.")]
+    [SerializeField] private bool followFreeHand = true;
 
     [SerializeField] private bool UseFullHipRotation = false; //if true, the belt will match the full rotation of the hips, which can be useful for certain avatar types, but can cause jitter on others. If false, the belt will only match the yaw rotation of the hips, which is more stable for most avatars.
     private VRCPlayerApi localPlayer;
@@ -32,6 +35,9 @@ public class UCS_MagBelt : UdonSharpBehaviour
     // cached values to avoid creating temporaries in the update loop
     private Vector3 cachedHipPosition = Vector3.zero;
     private Quaternion cachedHipRotation = Quaternion.identity;
+    // Some avatars rig the hips backwards or upside down. Same fix as the stow system's playerTrackingParenting:
+    // measure the hip bone against the (always upright, forward-facing) player rotation once per avatar.
+    private Quaternion hipFix = Quaternion.identity;
 
     private const float MinValidEyeHeight = 0.01f;
 
@@ -117,6 +123,28 @@ public class UCS_MagBelt : UdonSharpBehaviour
         DisableBeltPhysics();
         FlipBelt(flipBelt);
         UpdateAvatarScale(localPlayer);
+        CalibrateHip();
+    }
+
+    public void CalibrateHip()
+    {
+        if (!Utilities.IsValid(localPlayer)) return;
+        // Hip orientation in player space, snapped to the nearest axis-aligned rotation so only the rig's constant
+        // flip is cancelled and the live pose (any lean under 45 degrees) survives.
+        Quaternion local = Quaternion.Inverse(localPlayer.GetRotation()) * localPlayer.GetBoneRotation(HumanBodyBones.Hips);
+        Vector3 forward = SnapAxis(local * Vector3.forward);
+        Vector3 up = SnapAxis(local * Vector3.up);
+        hipFix = Mathf.Abs(Vector3.Dot(forward, up)) > 0.5f ? Quaternion.identity : Quaternion.Inverse(Quaternion.LookRotation(forward, up));
+    }
+
+    private Vector3 SnapAxis(Vector3 v)
+    {
+        float x = Mathf.Abs(v.x);
+        float y = Mathf.Abs(v.y);
+        float z = Mathf.Abs(v.z);
+        if (x >= y && x >= z) return new Vector3(Mathf.Sign(v.x), 0f, 0f);
+        if (y >= z) return new Vector3(0f, Mathf.Sign(v.y), 0f);
+        return new Vector3(0f, 0f, Mathf.Sign(v.z));
     }
 
     private void UpdateAvatarScale(VRCPlayerApi player)
@@ -205,7 +233,7 @@ public class UCS_MagBelt : UdonSharpBehaviour
         if (localPlayer != null && BeltHipBone != null)
         {
             cachedHipPosition = localPlayer.GetBonePosition(HumanBodyBones.Hips);
-            cachedHipRotation = localPlayer.GetBoneRotation(HumanBodyBones.Hips);
+            cachedHipRotation = localPlayer.GetBoneRotation(HumanBodyBones.Hips) * hipFix;
             BeltHipBone.position = cachedHipPosition;
             if (UseFullHipRotation)
             {
@@ -220,6 +248,33 @@ public class UCS_MagBelt : UdonSharpBehaviour
         }
 
         AlignPreviewMagToHolster();
+    }
+
+    // Called by guns when one of their grips is grabbed or released. Deferred a frame because the
+    // hand isn't registered as holding (or no longer holding) the pickup yet inside OnPickup/OnDrop.
+    public void RequestSideRefresh()
+    {
+        if (followFreeHand)
+        {
+            SendCustomEventDelayedFrames(nameof(RefreshSide), 1);
+        }
+    }
+
+    public void RefreshSide()
+    {
+        if (!Utilities.IsValid(localPlayer))
+        {
+            return;
+        }
+
+        // ponytail: any held pickup counts as busy; both busy or both free keeps the last side
+        bool leftBusy = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Left) != null;
+        bool rightBusy = localPlayer.GetPickupInHand(VRC_Pickup.PickupHand.Right) != null;
+        if (leftBusy != rightBusy)
+        {
+            // the unflipped belt sits on the left hip
+            FlipBelt(leftBusy);
+        }
     }
 
     public void RequestMagType(string magTypeId)
@@ -416,7 +471,10 @@ public class UCS_MagBelt : UdonSharpBehaviour
         if (player != null && player.isLocal)
         {
             FlipBelt(flipBelt);
+            RequestSideRefresh();
             UpdateAvatarScale(player);
+            // also fires on avatar change; one frame late because the new bones aren't posed yet
+            SendCustomEventDelayedFrames(nameof(CalibrateHip), 1);
         }
     }
 

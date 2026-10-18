@@ -62,11 +62,11 @@ public class UCS_HitEffectsPool : UdonSharpBehaviour
         {
             EnsurePoolInitialized(ref pool, prefab, parent, InitialPoolSize);
         }
+        // returns the instance still inactive so callers can position it before OnEnable / particle play-on-awake
         for (int i = 0; i < pool.Length; i++)
         {
             if (!pool[i].activeSelf)
             {
-                pool[i].SetActive(true);
                 return pool[i];
             }
         }
@@ -85,7 +85,6 @@ public class UCS_HitEffectsPool : UdonSharpBehaviour
             go.SetActive(false);
         }
         pool = temp;
-        pool[oldLen].SetActive(true);
         return pool[oldLen];
     }
 
@@ -95,8 +94,28 @@ public class UCS_HitEffectsPool : UdonSharpBehaviour
         GameObject go = GetFromPool(ref Pool, Prefab, parent);
         if (go != null)
         {
+            go.SetActive(true);
             UCS_HitEffectBase effect = go.GetComponent<UCS_HitEffectBase>();
             if (effect != null) effect.Initialize(this);
+        }
+        return go;
+    }
+
+    // Preferred entry point for guns, projectiles and grenades: positions the instance before enabling it and
+    // passes blame along, so a pool of explosions can be dropped in anywhere a pool of sparks is used.
+    public GameObject SpawnAt(Vector3 position, Quaternion rotation, int blamedPlayerID, int attackerTeamID)
+    {
+        Transform parent = PoolParent != null ? PoolParent : this.transform;
+        GameObject go = GetFromPool(ref Pool, Prefab, parent);
+        if (go == null) return null;
+        go.transform.position = position;
+        go.transform.rotation = rotation;
+        go.SetActive(true);
+        UCS_HitEffectBase effect = go.GetComponent<UCS_HitEffectBase>();
+        if (effect != null)
+        {
+            effect.Initialize(this);
+            effect.OnSpawned(blamedPlayerID, attackerTeamID);
         }
         return go;
     }
