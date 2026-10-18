@@ -3,42 +3,44 @@ name: Build Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   packageName: "com.toly65.udon-combat-system"
+  listingRepo: "Toly65/vpm-listing"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Get version
-        id: version
-        uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
-        with:
-          path: "package.json"
-          prop_path: "version"
-
-      - run: echo ${{ steps.version.outputs.prop }}
-
-      - name: Set Environment Variables
+      - name: Read version and changelog notes
         run: |
-          echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}.zip" >> $GITHUB_ENV
+          version=$(jq -r .version package.json)
+          echo "version=$version" >> $GITHUB_ENV
+          echo "zipFile=${packageName}-${version}.zip" >> $GITHUB_ENV
+          # notes = the "## [version]" section of CHANGELOG.md, up to the next "## ["
+          awk -v v="$version" '
+            /^## \[/ { if (on) exit; on = index($0, "[" v "]") }
+            on' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::No '## [$version]' section in CHANGELOG.md"; exit 1
+          fi
 
       - name: Create Zip
-        uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
-        with:
-          type: "zip"
-          directory: "."
-          filename: "${{ env.zipFile }}"
-          exclusions: "*.git* .github/*"
+        run: zip -r "$zipFile" . -x '*.git*' '.github/*' notes.md
 
-      - name: Make Release
-        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
-        with:
-          tag_name: ${{ steps.version.outputs.prop }}
-          draft: true
-          files: |
-            ${{ env.zipFile }}
-            package.json
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$version" "$zipFile" package.json \
+            --title "$version" --notes-file notes.md
+
+      - name: Rebuild VPM listing
+        env:
+          GH_TOKEN: ${{ secrets.LISTING_PAT }}
+        run: gh workflow run build-listing.yml --repo "$listingRepo"
