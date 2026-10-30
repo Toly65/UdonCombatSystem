@@ -130,6 +130,12 @@ public class UCS_PoolDispenser : UdonSharpBehaviour
     }
 #endif
 
+    // True while a dispense is in flight; a second _Dispense is ignored until it clears (used by UCS_PoolSpawnerMenu).
+    public bool IsBusy()
+    {
+        return busy;
+    }
+
     // Called by UCS_DispenserButton on the Button child, which is the interact target.
     public void _Dispense()
     {

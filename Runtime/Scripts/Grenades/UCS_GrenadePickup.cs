@@ -11,10 +11,13 @@ public class UCS_GrenadePickup : UdonSharpBehaviour
 {
     [SerializeField] private UCS_Grenade grenade;
     private VRC_Pickup pickup;
+    private UCS_PoolItemRules rules; // optional claimant-only pickup, found on the pool above this grenade
+    private bool rejectedPickup;
 
     private void Start()
     {
         pickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));
+        rules = GetComponentInParent<UCS_PoolItemRules>();
         VRCPlayerApi local = Networking.LocalPlayer;
         // desktop holds until thrown, matching the guns
         if (local != null) pickup.AutoHold = local.IsUserInVR() ? VRC_Pickup.AutoHoldMode.No : VRC_Pickup.AutoHoldMode.Yes;
@@ -22,6 +25,12 @@ public class UCS_GrenadePickup : UdonSharpBehaviour
 
     public override void OnPickup()
     {
+        if (rules != null && !rules.AllowPickup(gameObject))
+        {
+            rejectedPickup = true;
+            pickup.Drop();
+            return;
+        }
         grenade.OnPickedUp();
         // stops the free hand grabbing the pickup instead of the pin physbone
         pickup.pickupable = false;
@@ -29,6 +38,7 @@ public class UCS_GrenadePickup : UdonSharpBehaviour
 
     public override void OnDrop()
     {
+        if (rejectedPickup) { rejectedPickup = false; return; } // the grenade never saw this pickup
         pickup.pickupable = true;
         grenade.OnDropped();
     }

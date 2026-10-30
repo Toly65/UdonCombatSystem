@@ -2,6 +2,27 @@
 
 All notable changes to the Udon Combat System package.
 
+## [2.4.0] - 2026-10-30
+
+Changes since 2.3.0. Requires Udon Stow System 1.2.x.
+
+### Added
+- `Gun Spawner.prefab` (Prefabs/Gun Spawner): a world-space menu that dispenses M4, Glock 17, M67, M84 and T13 from `BulkPreOrderPool`s, with a return bin. The table, screen and bin are placeholder cubes; swap in your own models.
+  - `UCS_PoolSpawnerMenu` + `UCS_PoolSpawnerTile`: tile per pool with quantity selectors, a spawn queue and Spawn All. Spawning goes through each pool's `UCS_PoolDispenser`, and remaining counts are read from the synced pool.
+  - `UCS_PoolReturnBin`: a trigger that returns a dropped item to its pool.
+- **Tools > Combat System > Check Setup**: lists what is missing or miswired in the open scene (stow manager with no points or mismatched keys, missing or duplicate stow HUD, pools without an icon or name, stowables with unset references or sharing a root, guns whose muzzle, pickup, sounds, mag socket, mag belt, required mag pool, slide handler or two-handed manager are missing or point at the wrong gun, mag pools and mags with missing references, UdonSharp scripts with no program asset or Udon behaviour). Each line has a Select button, with one-click fixes for baking an icon and creating the HUD. Repeats across copies of a pooled gun fold into one line with a count. It lives in this package (`Editor/UCS_SetupValidator.cs` and `UCS_SetupValidator.Guns.cs`) and also checks the stow system's setup, since this package depends on it; the stow package has no checker of its own.
+- `UCS_PoolItemRules` (on a `BulkPreOrderPool`): returns items left idle (not held, stowed or moved) after **Idle Seconds**, returns a player's items when they leave, and has **Swap Owner On Pickup** and **Owner Only Pickup** toggles. `UCS_PickupEventTransferer` and `UCS_GrenadePickup` find it automatically.
+- `BulkPreOrderPool` has an **Item Name** and **Item Icon**. `UCS_PoolIconBaker` (a **Bake Icon** button under Item Icon on the pool, greyed out until the pool has objects; or Tools > Combat System > Bake All Pool Icons) renders the icon from the pool's first object.
+- `UCS_PoolDispenser.IsBusy()`.
+- `UCS_StowHud` (Tools > Combat System > Create Stow HUD): a desktop-only, Half-Life 2 style stow display along the top of the screen, styled like the ammo panel. Slots that share a key form a column: collapsed it shows one tile (the item most recently stowed or cycled to), and while that key is used it expands downward to list every slot, with the slot in front of you lit and its key badge green. Tiles show the item's icon (or the first letter of its name), a circle for the slot's size class and the key badge. Adjust the strip's anchored position to clear VRChat's own HUD. Inside a prefab instance the menu rebuilds the HUD in the prefab itself.
+  - Icons come from the item, not from a pool list: set **Item Icon** on a `BulkPreOrderPool` and it passes the icon and **Item Name** to its items' `StowableManager` at start (an icon set on the item itself wins). Icons missing from pools in the open scenes are baked automatically before entering play mode or a VRChat build (`UCS_PoolIconAutoBake`), and baking also fills in an empty Item Name from the first object.
+- `UCS_StowLayoutPreviewBaker`: renders a stow layout's pockets (seen from behind) into its **Preview Image**, for the stow system's layout switcher menu. Use the **Bake Preview** button on the `PlayerStowPointManager` inspector (the stow package finds the baker by reflection, so the button is greyed out without this package), or **Tools > Combat System > Bake All Stow Layout Previews**. `UCS_PoolIconBaker.BakeObjectAt` is `BakeObject` with the camera pitch, yaw and object turn as parameters.
+- `UCS_StowHud` has an optional **Switcher** field. With the HUD added to the stow layout switcher's **Changed Event Targets** (`OnStowLayoutChanged`), the hotbar rebuilds for the active layout whenever the player switches.
+- Stow system (see its changelog): key groups, **Display Linger Seconds** for tap-then-click, and the getters and per-item icon the stow HUD reads.
+
+### Fixed
+- `BulkPreOrderPool` releases a stowed item's stow lock before hiding it (return-all and single returns), so a holster can't drag a returned item back out.
+
 ## [2.3.0] - 2026-10-18
 
 Changes since 2.2.0.

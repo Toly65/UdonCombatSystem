@@ -13,10 +13,14 @@ public class UCS_PickupEventTransferer : UdonSharpBehaviour
     public string pickupDropEvent = "Drop";
     public string pickupEvent = "Pickup";
     private VRC_Pickup pickup;
+    // optional pool-wide pickup rules (owner swap / claimant-only pickup), found on the pool above this gun
+    private UCS_PoolItemRules rules;
+    private bool rejectedPickup;
 
     private void Start()
     {
         pickup = (VRC_Pickup)this.GetComponent(typeof(VRC_Pickup));
+        rules = GetComponentInParent<UCS_PoolItemRules>();
         if(Networking.LocalPlayer.IsUserInVR())
         {
             pickup.AutoHold = VRC_Pickup.AutoHoldMode.No;
@@ -38,6 +42,7 @@ public class UCS_PickupEventTransferer : UdonSharpBehaviour
 
     public override void OnDrop()
     {
+        if (rejectedPickup) { rejectedPickup = false; return; } // the gun never saw this pickup
         targetBehaviour.SendCustomEvent(pickupDropEvent);
         if (twoHandedManager != null)
             twoHandedManager.PrimaryDrop();
@@ -45,7 +50,14 @@ public class UCS_PickupEventTransferer : UdonSharpBehaviour
     }
     public override void OnPickup()
     {
-        Networking.SetOwner(Networking.LocalPlayer, targetBehaviour.gameObject);
+        if (rules != null && !rules.AllowPickup(gameObject))
+        {
+            rejectedPickup = true;
+            pickup.Drop();
+            return;
+        }
+        if (rules == null || rules.ShouldTakeOwnership(gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, targetBehaviour.gameObject);
         targetBehaviour.SendCustomEvent(pickupEvent);
         if (twoHandedManager != null)
             twoHandedManager.PrimaryPickup();

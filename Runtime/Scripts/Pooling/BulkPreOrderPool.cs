@@ -44,6 +44,12 @@ public class BulkPreOrderPool : UdonSharpBehaviour
     [Tooltip("The objects this pool manages. They start inactive. Array order is the slot order used by every claim.")]
     [SerializeField] private GameObject[] managedObjects = new GameObject[0];
 
+    [Header("Display (used by UCS_PoolSpawnerMenu)")]
+    [SerializeField] private string itemName;
+    [Tooltip("Shown on spawn menu tiles and on the stow HUD (the pool passes it to its items' StowableManager). Left empty it is baked automatically before play mode or a build, or bake it now with the Bake Icon button below.")]
+    [UCS_BakeIconButton]
+    [SerializeField] private Sprite itemIcon;
+
     [Header("Result Notifications")]
     [Tooltip("Optional behaviours (e.g. a loadout manager) notified with notifyEventName whenever a reservation / fulfillment / cancel result lands for the LOCAL player. They then query this pool.")]
     [SerializeField] private UdonBehaviour[] resultReceivers = new UdonBehaviour[0];
@@ -91,6 +97,13 @@ public class BulkPreOrderPool : UdonSharpBehaviour
         // Pool starts empty: every slot free and every managed object hidden.
         for (int i = 0; i < size; i++)
         {
+            // hand the pool's name and icon to the item so stow HUDs can show it without knowing about pools
+            if (managedObjects[i] != null)
+            {
+                StowableManager stowable = managedObjects[i].GetComponentInChildren<StowableManager>(true);
+                if (stowable != null) stowable.SetStowDisplay(itemName, itemIcon);
+            }
+
             claimOwnerIds[i] = 0;
             isActive[i] = false;
             if (managedObjects[i] != null)
@@ -359,7 +372,10 @@ public class BulkPreOrderPool : UdonSharpBehaviour
             newClaims[i] = 0;
             newActive[i] = false;
             if (managedObjects[i] != null)
+            {
+                ReleaseStow(managedObjects[i]);
                 managedObjects[i].SetActive(false);
+            }
         }
         claimOwnerIds = newClaims;
         isActive = newActive;
@@ -369,6 +385,16 @@ public class BulkPreOrderPool : UdonSharpBehaviour
     #endregion
 
     #region Query API (for resultReceivers, loadout managers and dispensers)
+
+    public string GetItemName()
+    {
+        return itemName;
+    }
+
+    public Sprite GetItemIcon()
+    {
+        return itemIcon;
+    }
 
     public int GetObjectCount()
     {
@@ -480,10 +506,21 @@ public class BulkPreOrderPool : UdonSharpBehaviour
         newClaims[slotIndex] = 0;
         newActive[slotIndex] = false;
         if (managedObjects[slotIndex] != null)
+        {
+            ReleaseStow(managedObjects[slotIndex]);
             managedObjects[slotIndex].SetActive(false);
+        }
         claimOwnerIds = newClaims;
         isActive = newActive;
         RequestSerialization();
+    }
+
+    // A stowed item is locked to its holder's stow point on that client; hiding it without releasing the lock
+    // would have the holster drag it back out next frame. Only stowed items send the network event.
+    void ReleaseStow(GameObject obj)
+    {
+        StowableManager stow = obj.GetComponent<StowableManager>();
+        if (stow != null && stow.IsStowedSynced) stow.ForceUnstowEverywhere();
     }
 
     int[] Clone(int[] src)

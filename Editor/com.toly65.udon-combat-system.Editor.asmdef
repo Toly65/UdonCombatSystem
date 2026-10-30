@@ -7,7 +7,11 @@
     "VRC.SDK3.Editor",
     "VRC.SDKBase",
     "VRC.SDKBase.Editor",
-    "com.toly65.udon-combat-system"
+    "VRC.Udon",
+    "VRC.Udon.Editor",
+    "Unity.TextMeshPro",
+    "com.toly65.udon-combat-system",
+    "com.toly65.udon-stow-system"
   ],
   "includePlatforms": [
     "Editor"
